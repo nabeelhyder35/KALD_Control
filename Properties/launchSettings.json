@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KALD_Control (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KALD_Control (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
