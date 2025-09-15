@@ -1,17 +1,40 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
+<PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <StartupObject>KALD_Control.Program</StartupObject>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>KALD_Control</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+	<Platforms>x64</Platforms>
+	<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+	<PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <WindowsPackageType>None</WindowsPackageType>
+<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+</PropertyGroup>
+  <ItemGroup>
+    <Content Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-16.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-24.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-256.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-32.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-lightunplated_targetsize-48.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-unplated_targetsize-16.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-unplated_targetsize-256.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-unplated_targetsize-32.png" />
+    <Content Remove="Assets\Square44x44Logo.altform-unplated_targetsize-48.png" />
+    <Content Remove="Assets\Square44x44Logo.scale-100.png" />
+    <Content Remove="Assets\Square44x44Logo.scale-125.png" />
+    <Content Remove="Assets\Square44x44Logo.scale-150.png" />
+    <Content Remove="Assets\Square44x44Logo.scale-400.png" />
+    <Content Remove="Assets\Square44x44Logo.targetsize-16.png" />
+    <Content Remove="Assets\Square44x44Logo.targetsize-24.png" />
+    <Content Remove="Assets\Square44x44Logo.targetsize-256.png" />
+    <Content Remove="Assets\Square44x44Logo.targetsize-32.png" />
+    <Content Remove="Assets\Square44x44Logo.targetsize-48.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -36,8 +59,22 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Downloads\WinSerialCommander\17.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="CSharpMarkup.WinUI" Version="3.1.2" />
+    <PackageReference Include="CSharpMarkup.WinUI.LiveChartsCore.SkiaSharpView" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.8" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4948" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.8" />
   </ItemGroup>
 
   <!--
@@ -55,5 +92,9 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>$(KALD_Control)</PackageId>
+    <Title>KALD_Control</Title>
+    <PackageIcon>17.png</PackageIcon>
   </PropertyGroup>
 </Project>

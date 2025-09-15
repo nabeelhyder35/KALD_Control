@@ -1,50 +1,107 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using KALD_Control.ViewModels;
+using KALD_Control.Services;
+using KALD_Control.Models;
+using System;
+using System.Diagnostics;
 
 namespace KALD_Control
 {
-    /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
-    /// </summary>
     public partial class App : Application
     {
-        private Window? _window;
+        public static IServiceProvider Services { get; private set; }
+        public static new App Current => (App)Application.Current;
+        private Window _mainWindow;
 
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
         public App()
         {
-            InitializeComponent();
+            // InitializeComponent() is called automatically by WinUI
+            this.UnhandledException += OnUnhandledException;
+
+            // Configure services
+            Services = ConfigureServices();
         }
 
-        /// <summary>
-        /// Invoked when the application is launched.
-        /// </summary>
-        /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        private static IServiceProvider ConfigureServices()
         {
-            _window = new MainWindow();
-            _window.Activate();
+            var services = new ServiceCollection();
+
+            // Add Logging
+            services.AddLogging(configure =>
+            {
+#if DEBUG
+                configure.AddDebug();
+                configure.SetMinimumLevel(LogLevel.Debug);
+#else
+                configure.SetMinimumLevel(LogLevel.Information);
+#endif
+            });
+
+            // Add Services
+            services.AddSingleton<DeviceManager>();
+
+            // Add ViewModels
+            services.AddTransient<MainViewModel>();
+
+            // Add Models
+            services.AddTransient<DeviceData>();
+
+            return services.BuildServiceProvider();
+        }
+
+        protected override void OnLaunched(LaunchActivatedEventArgs args)
+        {
+            // Create and activate the main window
+            _mainWindow = new MainWindow();
+            _mainWindow.Activate();
+        }
+
+        private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                var logger = Services?.GetService<ILogger<App>>();
+                logger?.LogError(e.Exception, $"Unhandled exception: {e.Exception.Message}");
+            }
+            catch
+            {
+                // Fallback logging if DI container is not available
+                Debug.WriteLine($"Unhandled exception: {e.Exception}");
+            }
+
+            e.Handled = true;
+
+            // Only show message dialog if we have a valid window
+            if (_mainWindow != null)
+            {
+                ShowMessage("Error", $"An error occurred: {e.Exception.Message}");
+            }
+        }
+
+        public void ShowMessage(string title, string message, string buttonText = "OK")
+        {
+            // Get the XamlRoot from the main window
+            var xamlRoot = _mainWindow?.Content?.XamlRoot;
+
+            if (xamlRoot != null)
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = title,
+                    Content = message,
+                    PrimaryButtonText = buttonText,
+                    XamlRoot = xamlRoot
+                };
+                _ = dialog.ShowAsync();
+            }
+            else
+            {
+                // Fallback if XamlRoot is not available
+                Debug.WriteLine($"Message dialog could not be shown: {title} - {message}");
+            }
         }
     }
 }
