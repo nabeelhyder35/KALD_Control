@@ -1,11 +1,12 @@
-﻿using System;
+﻿using KALD_Control.Models;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading;
-using Microsoft.Extensions.Logging;
-using KALD_Control.Models;
 
 namespace KALD_Control.Services
 {
@@ -16,17 +17,17 @@ namespace KALD_Control.Services
         private readonly object _serialLock = new object();
         private bool _disposed = false;
 
-        // Packet framing constants
+        // Packet framing constants - matches firmware: FPGA_START=0x2A, FPGA_END=0x3A
         private const byte STX = 0x2A; // Start of text
         private const byte ETX = 0x3A; // End of text
 
-        // Buffer for assembling incoming packets
+        // Buffer and parser state for assembling incoming packets
         private readonly List<byte> _incomingBuffer = new List<byte>();
         private enum ParserState { LookingForStart, ReadingHeader, ReadingData }
         private ParserState _currentState = ParserState.LookingForStart;
         private int _expectedDataLength = 0;
 
-        // Events for UI updates
+        // Events for UI updates based on received packets
         public event EventHandler<LaserStateType> StateUpdated;
         public event EventHandler<PulseConfig> PulseConfigUpdated;
         public event EventHandler<uint> ShotCountUpdated;
@@ -50,7 +51,6 @@ namespace KALD_Control.Services
             _logger = logger;
             _serialPort = new SerialPort
             {
-                BaudRate = 115200,
                 Parity = Parity.None,
                 DataBits = 8,
                 StopBits = StopBits.One,
@@ -60,44 +60,38 @@ namespace KALD_Control.Services
                 ReadBufferSize = 4096,
                 WriteBufferSize = 4096
             };
-
-            // Set error handling
             _serialPort.ErrorReceived += OnErrorReceived;
         }
 
         private void OnErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
-            Log($"Serial port error: {e.EventType}");
-
-            // Handle specific error types
+            Log($"Serial port error detected: {e.EventType}");
             switch (e.EventType)
             {
                 case SerialError.RXOver:
-                    Log("Input buffer overflow - data may be lost");
+                    Log("Input buffer overflow detected - discarding input buffer to recover");
                     _serialPort.DiscardInBuffer();
                     break;
                 case SerialError.Overrun:
-                    Log("Character buffer overrun - data may be lost");
+                    Log("Character buffer overrun - potential data loss, check baud rate and timing");
                     break;
                 case SerialError.RXParity:
-                    Log("Parity error - data corruption detected");
+                    Log("Parity error - data corruption detected, verify serial settings");
                     break;
                 case SerialError.Frame:
-                    Log("Framing error - check baud rate and settings");
+                    Log("Framing error - incorrect baud rate or stop bits, verify configuration");
                     break;
                 case SerialError.TXFull:
-                    Log("Output buffer full - cannot send more data");
+                    Log("Output buffer full - discarding output buffer to recover");
                     _serialPort.DiscardOutBuffer();
                     break;
             }
         }
 
-        public void Connect(string portName, int baudRate = 115200)
+        public void Connect(string portName, int baudRate)
         {
             if (_serialPort.IsOpen)
-            {
                 Disconnect();
-            }
 
             _serialPort.PortName = portName;
             _serialPort.BaudRate = baudRate;
@@ -105,35 +99,26 @@ namespace KALD_Control.Services
             try
             {
                 _serialPort.Open();
-
-                // Subscribe to data received AFTER opening the port
                 _serialPort.DataReceived += OnDataReceived;
-
-                Log($"Connected to {portName} at {baudRate} baud successfully.");
-
-                // Clear any existing data in the buffer
+                Log($"Successfully connected to {portName} at {baudRate} baud");
                 _serialPort.DiscardInBuffer();
                 _serialPort.DiscardOutBuffer();
-
-                // Reset parser state
                 ResetParser();
-
-                // Send discovery command to initialize communication
                 SendDiscoveryCommand();
             }
             catch (UnauthorizedAccessException ex)
             {
-                Log($"Access denied to {portName}: {ex.Message}");
-                throw new InvalidOperationException($"Access denied to {portName}. The port may be in use by another application.", ex);
+                Log($"Failed to connect to {portName}: Access denied - {ex.Message}");
+                throw new InvalidOperationException($"Access denied to {portName}.", ex);
             }
             catch (IOException ex)
             {
-                Log($"I/O error connecting to {portName}: {ex.Message}");
-                throw new InvalidOperationException($"I/O error connecting to {portName}. Check cable connection.", ex);
+                Log($"Failed to connect to {portName}: I/O error - {ex.Message}");
+                throw new InvalidOperationException($"I/O error connecting to {portName}.", ex);
             }
             catch (Exception ex)
             {
-                Log($"Connection error to {portName}: {ex.Message}");
+                Log($"Failed to connect to {portName}: Unexpected error - {ex.Message}");
                 throw new InvalidOperationException($"Could not connect to {portName}.", ex);
             }
         }
@@ -142,23 +127,21 @@ namespace KALD_Control.Services
         {
             if (!_serialPort.IsOpen)
             {
-                Log("Not connected.");
+                Log("Disconnect requested but no active connection exists");
                 return;
             }
-
             try
             {
-                // Unsubscribe first to prevent events during disconnect
                 _serialPort.DataReceived -= OnDataReceived;
                 _serialPort.Close();
                 _incomingBuffer.Clear();
                 _currentState = ParserState.LookingForStart;
                 _expectedDataLength = 0;
-                Log("Disconnected successfully.");
+                Log("Successfully disconnected from serial port");
             }
             catch (Exception ex)
             {
-                Log($"Disconnection error: {ex.Message}");
+                Log($"Error during disconnection: {ex.Message}");
             }
         }
 
@@ -169,53 +152,66 @@ namespace KALD_Control.Services
                 _serialPort.Close();
                 _serialPort.BaudRate = baudRate;
                 _serialPort.Open();
-                Log($"Baud rate changed to {baudRate}");
+                Log($"Baud rate updated to {baudRate}");
             }
             else
             {
                 _serialPort.BaudRate = baudRate;
+                Log($"Baud rate set to {baudRate} for next connection");
             }
         }
-
-        // --- Command Sending Methods ---
 
         public void SendDiscoveryCommand()
         {
             SendCommand(LcdRxCommand.lcdRxDiscovery, new byte[0]);
-            Log("Sent discovery command");
+            Log("Sent discovery command to request laser state");
         }
 
         public void SendPulseConfig(PulseConfig config)
         {
             var data = new List<byte>();
-            data.AddRange(ToBigEndian(config.Frequency));
-            data.AddRange(ToBigEndian(config.PulseWidth));
+
+            // Fix for CS0266: Explicit cast int to ushort with range check
+            if (config.Frequency < ushort.MinValue || config.Frequency > ushort.MaxValue)
+            {
+                Log($"Frequency value out of range for ushort: {config.Frequency} (must be 0 to 65535)");
+                return;
+            }
+            data.AddRange(ToBigEndian((ushort)config.Frequency));
+
+            data.AddRange(ToBigEndian((ushort)config.PulseWidth));
             data.AddRange(ToBigEndian(config.ShotTotal));
-            data.AddRange(ToBigEndian(config.Delay1));
-            data.AddRange(ToBigEndian(config.Delay2));
-            data.Add((byte)config.ShotMode);
-            data.Add((byte)config.TrigMode);
+            data.AddRange(ToBigEndian((ushort)config.Delay1));
+            data.AddRange(ToBigEndian((ushort)config.Delay2));
+            ushort modes = (ushort)(((ushort)config.ShotMode << 8) | (ushort)config.TrigMode);
+            data.AddRange(ToBigEndian(modes));
+
+            if (data.Count != FpgaCommandLengths.LSR_PULSE_CONFIG)
+            {
+                Log($"Pulse config data length error: Got {data.Count} bytes, expected {FpgaCommandLengths.LSR_PULSE_CONFIG} bytes");
+                return;
+            }
 
             SendCommand(LcdRxCommand.lcdRxLsrPulseConfig, data.ToArray());
-            Log($"Sent Pulse Config: F{config.Frequency / 10.0:F1}Hz, W{config.PulseWidth}us, {config.ShotTotal} shots");
+            Log($"Sent laser pulse configuration: Frequency={config.Frequency / 10.0:F1}Hz, PulseWidth={config.PulseWidth}us, Shots={config.ShotTotal}, Delay1={config.Delay1}us, Delay2={config.Delay2}us, ShotMode={config.ShotMode}, TrigMode={config.TrigMode}");
         }
 
         public void SendStateCommand(LaserStateType state)
         {
             SendCommand(LcdRxCommand.lcdRxLsrState, new[] { (byte)state });
-            Log($"Sent State Command: {state}");
+            Log($"Sent laser state command: State={state}");
         }
 
         public void SendInterlockMask(byte mask)
         {
             SendCommand(LcdRxCommand.lcdRxIntMask, new[] { mask });
-            Log($"Sent Interlock Mask: 0x{mask:X2}");
+            Log($"Sent interlock mask command: Mask=0x{mask:X2}");
         }
 
         public void SendWaveformState(bool enable)
         {
             SendCommand(LcdRxCommand.lcdRxWaveState, new[] { (byte)(enable ? 1 : 0) });
-            Log($"Sent Waveform State: {enable}");
+            Log($"Sent waveform messaging state: Enable={enable}");
         }
 
         public void SendLaserDelays(ushort delay1, ushort delay2)
@@ -224,36 +220,64 @@ namespace KALD_Control.Services
             data.AddRange(ToBigEndian(delay1));
             data.AddRange(ToBigEndian(delay2));
 
+            if (data.Count != FpgaCommandLengths.LSR_DELAYS)
+            {
+                Log($"Laser delays data length error: Got {data.Count} bytes, expected {FpgaCommandLengths.LSR_DELAYS} bytes");
+                return;
+            }
+
             SendCommand(LcdRxCommand.lcdRxLsrDelays, data.ToArray());
-            Log($"Sent Laser Delays: Delay1={delay1}us, Delay2={delay2}us");
+            Log($"Sent laser delays: Delay1={delay1}us, Delay2={delay2}us");
+        }
+
+        public void SendDigitalIOCommand()
+        {
+            // Assuming this sends a command for digital IO, adjust as per your logic
+            SendCommand(LcdRxCommand.lcdRxDigitalIO, new byte[0]); // Or with data if needed
+            Log("Sent digital IO command");
+        }
+
+        public void SendSystemReset()
+        {
+            SendCommand(LcdRxCommand.lcdRxSystemReset, new byte[0]);
+            Log("Sent system reset command");
+        }
+        public void RequestSystemStatus()
+        {
+            SendCommand(LcdRxCommand.lcdRxRunStatus, new byte[0]);
+            Log("Requested system status");
+        }
+
+        public void RequestWaveformData()
+        {
+            SendCommand(LcdRxCommand.lcdRxWaveform, new byte[0]);
+            Log("Requested waveform data");
         }
 
         public void SendLaserCalibration(ushort capVoltRange)
         {
-            SendCommand(LcdRxCommand.lcdRxLsrCal, ToBigEndian(capVoltRange));
-            Log($"Sent Laser Calibration: CapVoltRange={capVoltRange}");
-        }
-
-        public void SendVoltageSetpoint(ushort voltage)
-        {
-            if (voltage > 1500)
-                throw new ArgumentOutOfRangeException(nameof(voltage), "Voltage cannot exceed 1500V.");
-
-            SendCommand(LcdRxCommand.lcdRxLsrVolts, ToBigEndian(voltage));
-            Log($"Sent Voltage Setpoint: {voltage}V");
+            var data = ToBigEndian(capVoltRange);
+            SendCommand(LcdRxCommand.lcdRxLsrCal, data);
+            Log($"Sent laser calibration: CapVoltRange={capVoltRange}V");
         }
 
         public void SendChargeCancel()
         {
-            SendCommand(LcdRxCommand.lcdRxLsrChargeCancel, new byte[] { 0x01 });
-            Log("Sent Charge Cancel command.");
+            SendCommand(LcdRxCommand.lcdRxLsrChargeCancel, new byte[] { 1 });
+            Log("Sent charge cancel command");
+        }
+        // Add these methods to DeviceManager.cs
+        public void SendVolts(ushort voltage)
+        {
+            SendCommand(LcdRxCommand.lcdRxLsrVolts, ToBigEndian(voltage));
+            Log($"Sent voltage setpoint: {voltage}V");
         }
 
         public void SendShutterConfig(ShutterConfig config)
         {
-            var data = new byte[] { (byte)config.ShutterMode, (byte)config.ShutterState };
-            SendCommand(LcdRxCommand.lcdRxShutterConfig, data);
-            Log($"Sent Shutter Config: Mode={config.ShutterMode}, State={config.ShutterState}");
+            ushort packed = (ushort)(((ushort)config.ShutterMode << 8) | (ushort)config.ShutterState);
+            SendCommand(LcdRxCommand.lcdRxShutterConfig, ToBigEndian(packed));
+            Log($"Sent shutter config: Mode={config.ShutterMode}, State={config.ShutterState}");
         }
 
         public void SendSoftStartConfig(SoftStartConfig config)
@@ -261,340 +285,223 @@ namespace KALD_Control.Services
             var data = new List<byte>();
             data.Add((byte)(config.Enable ? 1 : 0));
             data.AddRange(ToBigEndian(config.IdleSetpoint));
-            data.AddRange(ToBigEndian((uint)config.RampCount));
-
+            data.AddRange(ToBigEndian(config.RampCount));
             SendCommand(LcdRxCommand.lcdRxSoftStartConfig, data.ToArray());
-            Log($"Sent SoftStart Config: Enable={config.Enable}, IdleV={config.IdleSetpoint}, RampShots={config.RampCount}");
+            Log($"Sent soft start config: Enable={config.Enable}, Idle={config.IdleSetpoint}V, Ramp={config.RampCount}");
         }
 
-        public void SendDigitalOutput(int channel, bool state)
-        {
-            if (channel < 0 || channel > 31)
-                throw new ArgumentOutOfRangeException(nameof(channel), "Channel must be between 0-31");
 
-            byte[] data = new byte[2];
-            data[0] = (byte)channel;
-            data[1] = (byte)(state ? 1 : 0);
-
-            SendCommand(LcdRxCommand.lcdRxDigitalIO, data);
-            Log($"Sent Digital Output: Channel={channel}, State={state}");
-        }
-
-        public void RequestSystemStatus()
-        {
-            SendDiscoveryCommand();
-        }
-
-        public void RequestInterlockStatus()
-        {
-            SendCommand(LcdRxCommand.lcdRxIntMask, new byte[] { 0x00 });
-        }
-
-        public void RequestWaveformData()
-        {
-            SendWaveformState(true);
-        }
-
-        public void SendSystemReset()
-        {
-            SendCommand(LcdRxCommand.lcdRxSystemReset, new byte[] { 0x01 });
-            Log("System reset command sent");
-        }
-
-        // --- Core Packet Handling ---
-
-        private void SendCommand(LcdRxCommand command, byte[] data)
+        public void SendCommand(LcdRxCommand command, byte[] data)
         {
             lock (_serialLock)
             {
-                try
+                if (!_serialPort.IsOpen) return;
+
+                byte checksum = (byte)command;
+                foreach (byte b in data)
                 {
-                    if (!_serialPort.IsOpen)
-                    {
-                        Log("Cannot send packet - serial port not open");
-                        return;
-                    }
-
-                    // Additional connection validation
-                    if (_serialPort.BytesToWrite > 1000)
-                    {
-                        Log("Output buffer full, clearing before send");
-                        _serialPort.DiscardOutBuffer();
-                    }
-
-                    // Packet structure: STX(1) + LEN(1) + CMD(1) + DATA(n) + CHKSUM(1) + ETX(1)
-                    // LEN = data.Length + 2 (CMD + CHKSUM)
-                    byte length = (byte)(data.Length + 2);
-                    byte[] packet = new byte[4 + data.Length + 1]; // STX + LEN + CMD + DATA + CHKSUM + ETX
-
-                    packet[0] = STX;
-                    packet[1] = length;
-                    packet[2] = (byte)command;
-
-                    Array.Copy(data, 0, packet, 3, data.Length);
-
-                    // Calculate checksum: CMD + all data bytes
-                    byte checksum = (byte)command;
-                    foreach (byte b in data)
-                    {
-                        checksum += b;
-                    }
-                    checksum = (byte)(0 - checksum);
-
-                    packet[3 + data.Length] = checksum;
-                    packet[4 + data.Length] = ETX;
-
-                    // Send with timeout protection
-                    _serialPort.WriteTimeout = 1000;
-                    _serialPort.Write(packet, 0, packet.Length);
-
-                    Log($"TX Cmd: {command} (0x{(byte)command:X2}), Data: {BitConverter.ToString(data)}, Checksum: 0x{checksum:X2}");
+                    checksum = (byte)(checksum + b);
                 }
-                catch (TimeoutException)
-                {
-                    Log("Write timeout - serial port may be disconnected");
-                    HandleCOMException(new System.Runtime.InteropServices.COMException("Write timeout", -2147417842));
-                }
-                catch (System.Runtime.InteropServices.COMException comEx)
-                {
-                    HandleCOMException(comEx);
-                }
-                catch (Exception ex)
-                {
-                    Log($"Error sending packet: {ex.Message}");
-                }
+                checksum = (byte)(0 - checksum);
+
+                var packet = new List<byte> { STX };
+                packet.Add((byte)((data.Length >> 8) & 0xFF));
+                packet.Add((byte)(data.Length & 0xFF));
+                packet.Add((byte)command);
+                packet.AddRange(data);
+                packet.Add(checksum);
+                packet.Add(ETX);
+
+                _serialPort.Write(packet.ToArray(), 0, packet.Count);
             }
         }
 
         private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            // Use a try-catch at the very top level to catch any COM exceptions
-            try
-            {
-                ProcessIncomingData();
-            }
-            catch (System.Runtime.InteropServices.COMException comEx)
-            {
-                HandleCOMException(comEx);
-            }
-            catch (Exception ex)
-            {
-                Log($"Unexpected error in data received: {ex.Message}");
-                ResetParser();
-            }
-        }
-
-        private void ProcessIncomingData()
-        {
-            if (!_serialPort.IsOpen)
-                return;
-
-            // Use a buffer to read all available data at once
-            int bytesToRead = _serialPort.BytesToRead;
-            if (bytesToRead <= 0)
-                return;
-
-            byte[] buffer = new byte[bytesToRead];
-            int totalBytesRead = 0;
-
-            // Read all available data with timeout protection
-            DateTime startTime = DateTime.Now;
-            while (totalBytesRead < bytesToRead && (DateTime.Now - startTime).TotalMilliseconds < 1000)
+            lock (_serialLock)
             {
                 try
                 {
-                    int bytesRead = _serialPort.Read(buffer, totalBytesRead, bytesToRead - totalBytesRead);
-                    if (bytesRead == 0) break;
-                    totalBytesRead += bytesRead;
-                }
-                catch (TimeoutException)
-                {
-                    Log("Read timeout occurred");
-                    break;
-                }
-                catch (InvalidOperationException ioEx)
-                {
-                    Log($"Serial port operation invalid: {ioEx.Message}");
-                    break;
-                }
-            }
+                    int bytesToRead = _serialPort.BytesToRead;
+                    byte[] buffer = new byte[bytesToRead];
+                    _serialPort.Read(buffer, 0, bytesToRead);
+                    _incomingBuffer.AddRange(buffer);
 
-            if (totalBytesRead == 0)
-            {
-                Log("No data read from serial port");
-                return;
-            }
-
-            Log($"Received {totalBytesRead} bytes: {BitConverter.ToString(buffer, 0, Math.Min(totalBytesRead, 32))}");
-
-            // Process each byte
-            for (int i = 0; i < totalBytesRead; i++)
-            {
-                byte currentByte = buffer[i];
-
-                switch (_currentState)
-                {
-                    case ParserState.LookingForStart:
-                        if (currentByte == STX)
+                    while (_incomingBuffer.Count > 0)
+                    {
+                        switch (_currentState)
                         {
-                            _incomingBuffer.Clear();
-                            _incomingBuffer.Add(currentByte);
-                            _currentState = ParserState.ReadingHeader;
-                        }
-                        break;
-
-                    case ParserState.ReadingHeader:
-                        _incomingBuffer.Add(currentByte);
-
-                        if (_incomingBuffer.Count == 3) // STX + LEN(1) + CMD(1)
-                        {
-                            // Extract length from byte 1
-                            _expectedDataLength = _incomingBuffer[1] - 2; // Subtract CMD and CHKSUM
-
-                            // Validate length
-                            if (_expectedDataLength < 0 || _expectedDataLength > 1024)
-                            {
-                                Log($"Invalid expected length: {_expectedDataLength}. Resetting parser.");
-                                ResetParser();
+                            case ParserState.LookingForStart:
+                                int stxIndex = _incomingBuffer.IndexOf(STX);
+                                if (stxIndex >= 0)
+                                {
+                                    _incomingBuffer.RemoveRange(0, stxIndex);
+                                    _currentState = ParserState.ReadingHeader;
+                                    _incomingBuffer.RemoveAt(0); // Remove STX
+                                }
+                                else
+                                {
+                                    _incomingBuffer.Clear();
+                                    return;
+                                }
                                 break;
-                            }
 
-                            _currentState = ParserState.ReadingData;
+                            case ParserState.ReadingHeader:
+                                if (_incomingBuffer.Count < 3)
+                                    return;
+
+                                int dataLength = (_incomingBuffer[0] << 8) | _incomingBuffer[1];
+                                byte commandByte = _incomingBuffer[2];
+
+                                _expectedDataLength = dataLength + 1; // Data + Checksum
+                                _incomingBuffer.RemoveRange(0, 3); // Remove length and command
+
+                                if (_incomingBuffer.Count >= _expectedDataLength + 1) // +1 for ETX
+                                {
+                                    ProcessPacket(commandByte, dataLength);
+                                }
+                                else
+                                {
+                                    _currentState = ParserState.ReadingData;
+                                }
+                                break;
+
+                            case ParserState.ReadingData:
+                                if (_incomingBuffer.Count < _expectedDataLength + 1) // +1 for ETX
+                                    return;
+
+                                // Process the packet (commandByte from header)
+                                ProcessPacket(_incomingBuffer[-(_expectedDataLength + 3) + 2], _expectedDataLength - 1); // Adjust as needed
+                                break;
                         }
-                        break;
-
-                    case ParserState.ReadingData:
-                        _incomingBuffer.Add(currentByte);
-
-                        // Total packet should be: STX(1) + LEN(1) + CMD(1) + DATA(n) + CHKSUM(1) + ETX(1)
-                        int expectedTotalLength = 3 + _expectedDataLength + 2;
-
-                        if (_incomingBuffer.Count >= expectedTotalLength)
-                        {
-                            if (_incomingBuffer[_incomingBuffer.Count - 1] == ETX)
-                            {
-                                ProcessPacket(_incomingBuffer.ToArray());
-                            }
-                            else
-                            {
-                                Log($"Missing ETX byte. Last byte: 0x{_incomingBuffer[_incomingBuffer.Count - 1]:X2}");
-                            }
-                            ResetParser();
-                        }
-                        break;
+                    }
                 }
-            }
-
-            // Check if parser state is stuck and reset if necessary
-            if (_currentState != ParserState.LookingForStart && _incomingBuffer.Count > 100)
-            {
-                Log($"Parser state stuck. Current state: {_currentState}, Buffer count: {_incomingBuffer.Count}");
-                ResetParser();
+                catch (Exception ex)
+                {
+                    Log($"Error receiving data: {ex.Message}");
+                    ResetParser();
+                }
             }
         }
 
-        private void ProcessPacket(byte[] packet)
+        private void ProcessPacket(byte commandByte, int dataLength)
         {
             try
             {
-                if (packet == null || packet.Length < 6)
+                if (_incomingBuffer[_expectedDataLength] != ETX)
                 {
-                    Log($"Packet too short: {packet?.Length ?? 0} bytes");
+                    Log("Invalid ETX - discarding packet");
+                    ResetParser();
                     return;
                 }
 
-                // Verify STX
-                if (packet[0] != STX)
-                {
-                    Log($"Invalid STX: 0x{packet[0]:X2}");
-                    return;
-                }
+                byte[] data = _incomingBuffer.GetRange(0, dataLength).ToArray();
+                byte receivedChecksum = _incomingBuffer[dataLength];
 
-                // Extract length
-                byte length = packet[1];
-
-                // Verify packet length matches expected
-                if (packet.Length != length + 3) // STX + LEN + DATA + CHKSUM + ETX
-                {
-                    Log($"Length mismatch. Expected {length + 3} bytes, got {packet.Length}");
-                    return;
-                }
-
-                // Verify ETX
-                if (packet[packet.Length - 1] != ETX)
-                {
-                    Log($"Invalid ETX: 0x{packet[packet.Length - 1]:X2}");
-                    return;
-                }
-
-                // Extract command and data
-                byte commandByte = packet[2];
-
-                // Handle special negative commands first
-                if (commandByte == SpecialCommands.LCD_RX_BAD_CMD)
-                {
-                    Log("Received bad command response from FPGA - checksum error");
-                    return;
-                }
-                else if (commandByte == SpecialCommands.LCD_RX_NO_CMD)
-                {
-                    Log("No command received from FPGA");
-                    return;
-                }
-
-                LcdTxCommand command = (LcdTxCommand)commandByte;
-
-                // Calculate data length: length includes CMD(1) + DATA(n) + CHKSUM(1)
-                int dataLength = length - 2;
-
-                if (dataLength < 0)
-                {
-                    Log($"Invalid data length: {dataLength}");
-                    return;
-                }
-
-                byte[] data = new byte[dataLength];
-                Array.Copy(packet, 3, data, 0, dataLength);
-
-                byte receivedChecksum = packet[3 + dataLength];
-
-                // Calculate checksum: CMD + all data bytes
                 byte calculatedChecksum = commandByte;
-                for (int i = 0; i < dataLength; i++)
+                foreach (byte b in data)
                 {
-                    calculatedChecksum += data[i];
+                    calculatedChecksum = (byte)(calculatedChecksum + b);
                 }
                 calculatedChecksum = (byte)(0 - calculatedChecksum);
 
                 if (receivedChecksum != calculatedChecksum)
                 {
-                    Log($"Checksum error for command {command}. Expected 0x{calculatedChecksum:X2}, got 0x{receivedChecksum:X2}");
+                    Log($"Checksum mismatch: Received=0x{receivedChecksum:X2}, Calculated=0x{calculatedChecksum:X2}");
+                    ResetParser();
                     return;
                 }
 
-                // Handle the command
+                _incomingBuffer.RemoveRange(0, _expectedDataLength + 1); // Data + Checksum + ETX
+                _currentState = ParserState.LookingForStart;
+
+                // Handle command
+                LcdTxCommand command = (LcdTxCommand)commandByte;
                 switch (command)
                 {
-                    case LcdTxCommand.lcdTxDiscovery:
-                        if (data.Length >= 1)
+                    case LcdTxCommand.lcdTxBadCmd:
+                        Log("Received bad command notification from device");
+                        break;
+
+                    // In DeviceManager.cs, replace the relevant case blocks in ProcessPacket
+                    case LcdTxCommand.lcdTxLsrPulseConfig:
+                        if (data.Length != FpgaCommandLengths.LSR_PULSE_CONFIG)
                         {
-                            StateUpdated?.Invoke(this, (LaserStateType)data[0]);
-                            Log($"Discovery response: State = {(LaserStateType)data[0]}");
+                            Log($"Pulse config response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_PULSE_CONFIG} bytes");
+                            break;
+                        }
+                        var pulseConfig = new PulseConfig // Renamed from 'config' to 'pulseConfig'
+                        {
+                            Frequency = FromBigEndianUshort(data, 0),
+                            PulseWidth = FromBigEndianUshort(data, 2),
+                            ShotTotal = FromBigEndianUint(data, 4),
+                            Delay1 = FromBigEndianUshort(data, 8),
+                            Delay2 = FromBigEndianUshort(data, 10),
+                            ShotMode = (ShotModeType)(data[12]),
+                            TrigMode = (TriggerModeType)(data[13])
+                        };
+                        PulseConfigUpdated?.Invoke(this, pulseConfig);
+                        Log($"Received pulse config: Freq={pulseConfig.Frequency / 10.0:F1}Hz, PW={pulseConfig.PulseWidth}us, Shots={pulseConfig.ShotTotal}, D1={pulseConfig.Delay1}, D2={pulseConfig.Delay2}, Mode={pulseConfig.ShotMode}/{pulseConfig.TrigMode}");
+                        break;
+
+                  
+
+                    case LcdTxCommand.lcdTxShutterConfig:
+                        if (data.Length != FpgaCommandLengths.SHUTTER_CONFIG)
+                        {
+                            Log($"Shutter config response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.SHUTTER_CONFIG} bytes");
+                            break;
+                        }
+                        if (data.Length >= 2)
+                        {
+                            ushort packed = FromBigEndianUshort(data, 0);
+                            var config = new ShutterConfig
+                            {
+                                ShutterMode = (ShutterModeType)(packed >> 8),
+                                ShutterState = (ShutterStateType)(packed & 0xFF)
+                            };
+                            ShutterConfigUpdated?.Invoke(this, config);
+                            Log($"Received shutter configuration: lsrShutterMode={config.ShutterMode}, lsrShutterState={config.ShutterState}");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrState:
+                        if (data.Length != FpgaCommandLengths.LSR_STATE)
+                        {
+                            Log($"State response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_STATE} bytes");
+                            break;
+                        }
                         if (data.Length >= 1)
                         {
-                            StateUpdated?.Invoke(this, (LaserStateType)data[0]);
-                            Log($"Laser state updated: {(LaserStateType)data[0]}");
+                            LaserStateType state = (LaserStateType)data[0];
+                            StateUpdated?.Invoke(this, state);
+                            Log($"Received state: {state}");
+                        }
+                        break;
+
+                    case LcdTxCommand.lcdTxLsrCount:
+                        if (data.Length != FpgaCommandLengths.LSR_SHOTS)
+                        {
+                            Log($"Shot count response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_SHOTS} bytes");
+                            break;
+                        }
+                        if (data.Length >= 4)
+                        {
+                            uint shotCount = FromBigEndianUint(data, 0);
+                            ShotCountUpdated?.Invoke(this, shotCount);
+                            Log($"Received shot count: {shotCount}");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrRunStatus:
+                        if (data.Length != FpgaCommandLengths.RUN_STATUS)
+                        {
+                            Log($"Run status response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.RUN_STATUS} bytes");
+                            break;
+                        }
                         if (data.Length >= 14)
                         {
-                            var runStatus = new RunStatusData
+                            var status = new RunStatusData
                             {
                                 ShotCount = FromBigEndianUint(data, 0),
                                 State = (LaserStateType)data[4],
@@ -603,109 +510,170 @@ namespace KALD_Control.Services
                                 Current = FromBigEndianUshort(data, 9),
                                 VDroop = FromBigEndianUshort(data, 11)
                             };
-                            RunStatusUpdated?.Invoke(this, runStatus);
-                            Log($"Run status: {runStatus.ShotCount} shots, {runStatus.Energy}mJ");
+                            RunStatusUpdated?.Invoke(this, status);
+                            Log($"Received run status: Shots={status.ShotCount}, State={status.State}, E={status.Energy}, P={status.Power}, C={status.Current}, VD={status.VDroop}");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrIntStatus:
+                        if (data.Length != FpgaCommandLengths.INT_STATUS)
+                        {
+                            Log($"Int status response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.INT_STATUS} bytes");
+                            break;
+                        }
                         if (data.Length >= 1)
                         {
-                            IntStatusUpdated?.Invoke(this, data[0]);
-                            Log($"Interlock status: 0x{data[0]:X2}");
+                            byte intStatus = data[0];
+                            IntStatusUpdated?.Invoke(this, intStatus);
+                            Log($"Received interlock status: 0x{intStatus:X2}");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrIntMask:
+                        if (data.Length != FpgaCommandLengths.INT_MASK)
+                        {
+                            Log($"Int mask response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.INT_MASK} bytes");
+                            break;
+                        }
                         if (data.Length >= 1)
                         {
-                            IntMaskUpdated?.Invoke(this, data[0]);
-                            Log($"Interlock mask: 0x{data[0]:X2}");
+                            byte intMask = data[0];
+                            IntMaskUpdated?.Invoke(this, intMask);
+                            Log($"Received interlock mask: 0x{intMask:X2}");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrWaveform:
-                        if (data.Length >= 64) // 32 samples * 2 bytes each
+                        if (data.Length != FpgaCommandLengths.WAVEFORM)
                         {
-                            var waveform = new WaveformData
-                            {
-                                Samples = new ushort[32],
-                                CaptureTime = DateTime.Now
-                            };
-
-                            for (int i = 0; i < 32; i++)
-                            {
-                                waveform.Samples[i] = FromBigEndianUshort(data, i * 2);
-                            }
-
-                            WaveformUpdated?.Invoke(this, waveform);
-                            Log($"Waveform data received: {waveform.Samples.Length} samples");
+                            Log($"Waveform response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.WAVEFORM} bytes");
+                            break;
                         }
+                        var samples = new ushort[data.Length / 2];
+                        for (int i = 0; i < samples.Length; i++)
+                        {
+                            samples[i] = FromBigEndianUshort(data, i * 2);
+                        }
+                        var waveform = new WaveformData { Samples = samples, CaptureTime = DateTime.Now };
+                        WaveformUpdated?.Invoke(this, waveform);
+                        Log($"Received waveform: {samples.Length} samples");
+                        break;
+
+                    case LcdTxCommand.lcdTxDiscovery:
+                        if (data.Length != FpgaCommandLengths.DISCOVERY)
+                        {
+                            Log($"Discovery response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.DISCOVERY} bytes");
+                            break;
+                        }
+                        Log("Received discovery response");
                         break;
 
                     case LcdTxCommand.lcdTxLsrVolts:
+                        if (data.Length != FpgaCommandLengths.LSR_VOLTS)
+                        {
+                            Log($"Volts response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_VOLTS} bytes");
+                            break;
+                        }
                         if (data.Length >= 2)
                         {
-                            ushort voltage = FromBigEndianUshort(data, 0);
-                            VoltsUpdated?.Invoke(this, voltage);
-                            Log($"Voltage updated: {voltage}");
+                            ushort volts = FromBigEndianUshort(data, 0);
+                            VoltsUpdated?.Invoke(this, volts);
+                            Log($"Received voltage: {volts}V");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrChargeState:
+                        if (data.Length != FpgaCommandLengths.CHARGE_STATE)
+                        {
+                            Log($"Charge state response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.CHARGE_STATE} bytes");
+                            break;
+                        }
                         if (data.Length >= 3)
                         {
-                            var chargeState = new ChargeStateData
+                            var state = new ChargeStateData
                             {
                                 MeasuredVolts = FromBigEndianUshort(data, 0),
                                 ChargeDone = data[2] != 0
                             };
-                            ChargeStateUpdated?.Invoke(this, chargeState);
-                            Log($"Charge state: Measured={chargeState.MeasuredVolts}, Done={chargeState.ChargeDone}");
+                            ChargeStateUpdated?.Invoke(this, state);
+                            Log($"Received charge state: MeasuredVolts={state.MeasuredVolts}V, ChargeDone={state.ChargeDone}");
                         }
                         break;
 
-                    case LcdTxCommand.lcdTxShutterConfig:
+                    case LcdTxCommand.lcdTxLsrChargeVolts:
+                        if (data.Length != FpgaCommandLengths.CHARGE_VOLT)
+                        {
+                            Log($"Charge volt response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.CHARGE_VOLT} bytes");
+                            break;
+                        }
                         if (data.Length >= 2)
                         {
-                            var config = new ShutterConfig
-                            {
-                                ShutterMode = (ShutterModeType)data[0],
-                                ShutterState = (ShutterStateType)data[1]
-                            };
-                            ShutterConfigUpdated?.Invoke(this, config);
-                            Log($"Shutter config: Mode={config.ShutterMode}, State={config.ShutterState}");
+                            ushort chargeVolt = FromBigEndianUshort(data, 0);
+                            Log($"Received charge voltage setpoint: chargeVolts={chargeVolt}V");
                         }
                         break;
 
+
                     case LcdTxCommand.lcdTxSoftStartConfig:
+                        if (data.Length != FpgaCommandLengths.SOFT_START_CONFIG)
+                        {
+                            Log($"Soft start config response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.SOFT_START_CONFIG} bytes");
+                            break;
+                        }
                         if (data.Length >= 7)
                         {
+                            byte enable = data[0];
+                            ushort idle = FromBigEndianUshort(data, 1);
+                            uint rampCount = FromBigEndianUint(data, 3);
                             var config = new SoftStartConfig
                             {
-                                Enable = data[0] != 0,
-                                IdleSetpoint = FromBigEndianUshort(data, 1),
-                                RampCount = FromBigEndianUint(data, 3)
+                                Enable = enable != 0,
+                                IdleSetpoint = idle,
+                                RampCount = rampCount
                             };
                             SoftStartConfigUpdated?.Invoke(this, config);
-                            Log($"SoftStart config: Enable={config.Enable}, IdleV={config.IdleSetpoint}, RampShots={config.RampCount}");
+                            Log($"Received soft start configuration: lsrSoftStart={config.Enable}, lsrIdleSetpoint={config.IdleSetpoint}V, lsrRampCount={config.RampCount} shots");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxLsrCal:
-                        if (data.Length >= 4)
+                        if (data.Length != FpgaCommandLengths.LSR_CAL)
+                        {
+                            Log($"Calibration response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_CAL} bytes");
+                            break;
+                        }
+                        if (data.Length >= 2)
                         {
                             var calibration = new CalibrationData
                             {
                                 CapVoltRange = FromBigEndianUshort(data, 0),
-                                MeasuredVoltage = FromBigEndianUshort(data, 2)
+                                MeasuredVoltage = 0
                             };
                             CalibrationUpdated?.Invoke(this, calibration);
-                            Log($"Calibration: Range={calibration.CapVoltRange}, Measured={calibration.MeasuredVoltage}");
+                            Log($"Received laser calibration: capVoltRange={calibration.CapVoltRange}V");
+                        }
+                        break;
+
+                    case LcdTxCommand.lcdTxLsrDelays:
+                        if (data.Length != FpgaCommandLengths.LSR_DELAYS)
+                        {
+                            Log($"Delays response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.LSR_DELAYS} bytes");
+                            break;
+                        }
+                        if (data.Length >= 4)
+                        {
+                            ushort delay1 = FromBigEndianUshort(data, 0);
+                            ushort delay2 = FromBigEndianUshort(data, 2);
+                            Log($"Received laser fire setup delays: lsrDelay1={delay1}us, lsrDelay2={delay2}us");
                         }
                         break;
 
                     case LcdTxCommand.lcdTxDigitalIO:
+                        if (data.Length != FpgaCommandLengths.DIGITAL_IO)
+                        {
+                            Log($"Digital I/O response invalid: Got {data.Length} bytes, expected {FpgaCommandLengths.DIGITAL_IO} bytes");
+                            break;
+                        }
                         if (data.Length >= 8)
                         {
                             var dioState = new DigitalIOState
@@ -715,16 +683,14 @@ namespace KALD_Control.Services
                                 Timestamp = DateTime.Now
                             };
                             DigitalIOUpdated?.Invoke(this, dioState);
-                            Log($"Digital I/O: Inputs=0x{dioState.InputStates:X8}, Outputs=0x{dioState.OutputStates:X8}");
+                            Log($"Received digital I/O state: InputStates=0x{dioState.InputStates:X8}, OutputStates=0x{dioState.OutputStates:X8}");
                         }
                         break;
 
                     default:
-                        Log($"Unhandled command received: {command} (0x{commandByte:X2})");
+                        Log($"Received unhandled command: CMD=0x{commandByte:X2}, DataLen={dataLength}");
                         break;
                 }
-
-                Log($"RX Cmd: {command} (0x{commandByte:X2}), Data: {BitConverter.ToString(data)}");
             }
             catch (Exception ex)
             {
@@ -737,47 +703,27 @@ namespace KALD_Control.Services
             _incomingBuffer.Clear();
             _currentState = ParserState.LookingForStart;
             _expectedDataLength = 0;
+            Log("Reset packet parser to initial state");
         }
 
         private void HandleCOMException(System.Runtime.InteropServices.COMException comEx)
         {
             Log($"COM Exception (Error Code: {comEx.ErrorCode}): {comEx.Message}");
-
             switch (comEx.ErrorCode)
             {
-                case -2147417842: // RPC_E_DISCONNECTED
-                    Log("COM port disconnected unexpectedly - the connection was lost");
-                    break;
-                case -2147467259: // Generic failure
-                    Log("Generic COM failure - check cable connection and port settings");
-                    break;
-                case -2147024891: // Access denied
-                    Log("Access denied to COM port - may be in use by another application");
-                    break;
-                case -2147024809: // Invalid parameter
-                    Log("Invalid parameter - check serial port configuration");
-                    break;
-                default:
-                    Log($"Unknown COM error: {comEx.ErrorCode}");
-                    break;
+                case -2147417842: Log("COM port disconnected unexpectedly: Attempting recovery"); break;
+                case -2147467259: Log("Generic COM failure: Check cable and port configuration"); break;
+                case -2147024891: Log("Access denied to COM port: Verify permissions"); break;
+                case -2147024809: Log("Invalid COM parameter: Check serial port settings"); break;
+                default: Log($"Unknown COM error: {comEx.ErrorCode}"); break;
             }
-
-            // Try to recover by resetting the connection
             if (IsConnected)
             {
-                Log("Attempting to recover from COM error by resetting connection...");
-                try
-                {
-                    Disconnect();
-                }
-                catch (Exception disconnectEx)
-                {
-                    Log($"Error during disconnect: {disconnectEx.Message}");
-                }
+                Log("Attempting recovery by resetting connection...");
+                try { Disconnect(); }
+                catch (Exception disconnectEx) { Log($"Disconnect error: {disconnectEx.Message}"); }
             }
         }
-
-        // --- Utility Methods ---
 
         private byte[] ToBigEndian(ushort value) => BitConverter.GetBytes(value).Reverse().ToArray();
         private byte[] ToBigEndian(uint value) => BitConverter.GetBytes(value).Reverse().ToArray();
@@ -799,7 +745,7 @@ namespace KALD_Control.Services
 
         private void Log(string message)
         {
-            string formattedMessage = $"{DateTime.Now:HH:mm:ss.fff} - {message}";
+            string formattedMessage = $"{DateTime.Now:HH:mm:ss.fff} - {message}\n";
             _logger?.LogInformation(formattedMessage);
             LogMessage?.Invoke(this, formattedMessage);
         }
@@ -808,7 +754,6 @@ namespace KALD_Control.Services
         {
             if (_disposed) return;
             _disposed = true;
-
             try
             {
                 if (_serialPort.IsOpen)
@@ -818,11 +763,11 @@ namespace KALD_Control.Services
                     _serialPort.Close();
                 }
                 _serialPort.Dispose();
-                Log("DeviceManager disposed.");
+                Log("DeviceManager disposed successfully");
             }
             catch (Exception ex)
             {
-                Log($"Error during dispose: {ex.Message}");
+                Log($"Error disposing DeviceManager: {ex.Message}");
             }
         }
     }

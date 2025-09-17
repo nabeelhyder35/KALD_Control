@@ -132,6 +132,27 @@ namespace KALD_Control.Models
             set => SetProperty(ref _waveformData, value);
         }
 
+        private CalibrationData _calibrationData = new CalibrationData();
+        public CalibrationData CalibrationData
+        {
+            get => _calibrationData;
+            set => SetProperty(ref _calibrationData, value);
+        }
+
+        private DigitalIOState _digitalIO = new DigitalIOState();
+        public DigitalIOState DigitalIO
+        {
+            get => _digitalIO;
+            set => SetProperty(ref _digitalIO, value);
+        }
+
+        private bool _waveformEnabled;
+        public bool WaveformEnabled
+        {
+            get => _waveformEnabled;
+            set => SetProperty(ref _waveformEnabled, value);
+        }
+
         private byte _rawStatus;
         public byte RawStatus
         {
@@ -391,7 +412,6 @@ namespace KALD_Control.Models
             {
                 if (SetProperty(ref _rawStatus, value))
                 {
-                    // Decode the interlock status from the raw byte
                     PowerOK = (value & 0x01) == 0;
                     TempOK = (value & 0x02) == 0;
                     DoorOK = (value & 0x04) == 0;

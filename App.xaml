@@ -13,12 +13,15 @@
 
             <!-- Custom Converters -->
             <conv:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
-            <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+            <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <conv:FrequencyConverter x:Key="FrequencyConverter"/>
             <conv:InterlockStatusToBrushConverter x:Key="InterlockStatusToBrushConverter"/>
+            <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+            <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
+            <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
             <conv:WaveformButtonTextConverter x:Key="WaveformButtonTextConverter"/>
-
+        
 
             <!-- Color Resources -->
             <Color x:Key="AppBackgroundColorHex">#201F1E</Color>
