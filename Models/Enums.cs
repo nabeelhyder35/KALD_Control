@@ -1,8 +1,19 @@
-﻿using System;
-
-// Enums.cs - Fixed version
-namespace KALD_Control.Models
+﻿namespace KALD_Control.Models
 {
+    /// <summary>
+    /// Defines communication protocol constants for device communication.
+    /// </summary>
+    public static class ProtocolConstants
+    {
+        public const byte STX = 0x2A;    // Start of Text
+        public const byte ETX = 0x3A;    // End of Text
+        public const int HEADER_LENGTH = 5; // STX(1) + Length(2) + Command(1) + Checksum(1)
+        public const int MIN_PACKET_LENGTH = HEADER_LENGTH + 1; // Minimum packet length (including ETX)
+    }
+
+    /// <summary>
+    /// Defines possible laser state types for the system.
+    /// </summary>
     public enum LaserStateType : byte
     {
         lsrIdle = 0,
@@ -10,110 +21,142 @@ namespace KALD_Control.Models
         lsrArmed = 2,
         lsrRunning = 3,
         lsrPausing = 4,
-        lsrPaused = 5,
-        lsrDisarming = 6,
-        lsrFault = 7,
-        lsrCalibrating = 8,
-        lsrTesting = 9
+        lsrDisarming = 5,
+        lsrPaused = 6,
+        lsrFault = 7
     }
 
+    /// <summary>
+    /// Defines shot modes for laser pulse configuration.
+    /// </summary>
     public enum ShotModeType : byte
     {
-        Single = 0,
-        Burst = 1,
-        Continuous = 2
+        burstMode = 0,
+        contMode = 1
     }
 
+    /// <summary>
+    /// Defines trigger modes for laser pulse configuration.
+    /// </summary>
     public enum TriggerModeType : byte
     {
-        Internal = 0,
-        External = 1
+        intTrigMode = 0,
+        extTrigMode = 1
     }
 
+    /// <summary>
+    /// Defines shutter modes for the laser system.
+    /// </summary>
     public enum ShutterModeType : byte
     {
-        Manual = 0,
-        Auto = 1
+        autoMode = 0,
+        manualMode = 1
     }
 
+    /// <summary>
+    /// Defines shutter states for the laser system.
+    /// </summary>
     public enum ShutterStateType : byte
     {
-        Closed = 0,
-        Open = 1
+        shutterClosed = 0,
+        shutterOpened = 1
     }
 
-    // Rx commands - From LCD to FPGA (matches CSV exactly)
+    /// <summary>
+    /// Defines analog input channel types for calibration.
+    /// </summary>
+    public enum AiChanType : byte
+    {
+        CapVoltage = 0,
+        LampCurrent = 1,
+        LampVoltage = 2,
+        Reserved3 = 3,
+        Reserved4 = 4,
+        Reserved5 = 5,
+        Reserved6 = 6,
+        Reserved7 = 7
+    }
+
+    /// <summary>
+    /// Defines analog output channel types for calibration.
+    /// </summary>
+    public enum AoChanType : byte
+    {
+        CapVoltageSet = 0,
+        Reserved1 = 1
+    }
+
+    /// <summary>
+    /// Defines commands sent to the device (receive commands).
+    /// </summary>
     public enum LcdRxCommand : byte
     {
-        lcdRxBadCmd = 0xFE,           // -2 as byte
-        lcdRxNoCmd = 0xFF,            // -1 as byte
-        lcdRxFPGABadCmd = 0x00,       // 0
-        lcdRxLsrPulseConfig = 0x01,   // 1
-        lcdRxLsrState = 0x02,         // 2
-        lcdRxIntMask = 0x03,          // 3
-        lcdRxWaveState = 0x04,        // 4
-        lcdRxLsrDelays = 0x05,        // 5
-        lcdRxLsrCal = 0x06,           // 6
-        lcdRxLsrVolts = 0x07,         // 7
-        lcdRxLsrChargeCancel = 0x08,  // 8
-        lcdRxShutterConfig = 0x09,    // 9
-        lcdRxSoftStartConfig = 0x0A,  // 10
-        lcdRxLsrShots = 0x0B,         // 11
-        lcdRxRunStatus = 0x0C,        // 12
-        lcdRxIntStatus = 0x0D,        // 13
-        lcdRxWaveform = 0x0E,         // 14
-        lcdRxDiscovery = 0x0F,        // 15
-        lcdRxLsrChargeState = 0x10,   // 16
-        lcdRxLsrChargeVolt = 0x11,    // 17
-        lcdRxDigitalIO = 0x12,        // 18 (added for missing reference)
-        lcdRxSystemReset = 0x13       // 19 (added for missing reference)
+        lcdRxBadCmd = 0xFE,
+        lcdRxNoCmd = 0xFF,
+        lcdRxFPGABadCmd = 0x00,
+        lcdRxLsrPulseConfig = 0x01,
+        lcdRxLsrState = 0x02,
+        lcdRxLsrCount = 0x03,
+        lcdRxLsrRunStatus = 0x04,
+        lcdRxLsrIntStatus = 0x05,
+        lcdRxLsrIntMask = 0x06,
+        lcdRxLsrWaveform = 0x07,
+        lcdRxLsrChargeCancel = 0x08,
+        lcdRxDiscovery = 0x09,
+        lcdRxDiscoveryAck = 0x0A,
+        lcdRxLsrVolts = 0x0B,
+        lcdRxLsrChargeState = 0x0C,
+        lcdRxLsrChargeVolts = 0x0D,
+        lcdRxShutterConfig = 0x0E,
+        lcdRxSoftStartConfig = 0x0F,
+        lcdRxReadEnergy = 0x10,
+        lcdRxReadTemperature = 0x11,
+        lcdRxSystemInfo = 0x12,
+        lcdRxSystemReset = 0x13,
+        lcdRxLsrCal = 0x14,
+        lcdRxLsrDelays = 0x15,
+        lcdRxDigitalIO = 0x16
     }
 
-    // Tx commands - From FPGA to LCD (matches CSV exactly)
+    /// <summary>
+    /// Defines commands received from the device (transmit commands).
+    /// </summary>
     public enum LcdTxCommand : byte
     {
-        lcdTxBadCmd = 0x00,           // 0
-        lcdTxLsrPulseConfig = 0x01,   // 1
-        lcdTxLsrState = 0x02,         // 2
-        lcdTxLsrCount = 0x03,         // 3
-        lcdTxLsrRunStatus = 0x04,     // 4
-        lcdTxLsrIntStatus = 0x05,     // 5
-        lcdTxLsrIntMask = 0x06,       // 6
-        lcdTxLsrWaveform = 0x07,      // 7
-        lcdTxDiscovery = 0x08,        // 8
-        lcdTxLsrVolts = 0x09,         // 9
-        lcdTxLsrChargeState = 0x0A,   // 10
-        lcdTxLsrChargeVolts = 0x0B,   // 11
-        lcdTxShutterConfig = 0x0C,    // 12
-        lcdTxSoftStartConfig = 0x0D,  // 13
-        lcdTxLsrCal = 0x0E,           // 14 (added for missing reference)
-        lcdTxLsrDelays = 0x0F,        // 15 (added for missing reference)
-        lcdTxDigitalIO = 0x10         // 16 (added for missing reference)
+        lcdTxFPGABadCmd = 0x00,
+        lcdTxLsrPulseConfig = 0x01,
+        lcdTxLsrState = 0x02,
+        lcdTxLsrCount = 0x03,
+        lcdTxLsrRunStatus = 0x04,
+        lcdTxLsrIntStatus = 0x05,
+        lcdTxLsrIntMask = 0x06,
+        lcdTxLsrWaveform = 0x07,
+        lcdTxDiscovery = 0x08,
+        lcdTxLsrVolts = 0x09,
+        lcdTxLsrChargeState = 0x0A,
+        lcdTxLsrChargeVolts = 0x0B,
+        lcdTxShutterConfig = 0x0C,
+        lcdTxSoftStartConfig = 0x0D,
+        lcdTxReadEnergy = 0x0E,
+        lcdTxReadTemperature = 0x0F,
+        lcdTxSystemInfo = 0x10,
+        lcdTxFactorySettings = 0x11,
+        lcdTxInterlockStatus = 0x12,
+        lcdTxLsrCal = 0x13,
+        lcdTxLsrDelays = 0x14,
+        lcdTxDigitalIO = 0x15
     }
 
-    // FPGA command data length constants (updated to match CSV)
-    public static class FpgaCommandLengths
+    /// <summary>
+    /// Defines packet validation results for communication protocol.
+    /// </summary>
+    public enum PacketValidationResult : byte
     {
-        public const int LSR_PULSE_CONFIG = 14;    // lcdRxLsrPulseConfig
-        public const int LSR_STATE = 1;            // lcdRxLsrState
-        public const int INT_MASK = 1;             // lcdRxIntMask
-        public const int WAVE_STATE = 1;           // lcdRxWaveState
-        public const int LSR_DELAYS = 4;           // lcdRxLsrDelays
-        public const int LSR_CAL = 2;              // lcdRxLsrCal
-        public const int LSR_VOLTS = 2;            // lcdRxLsrVolts
-        public const int LSR_CHARGE_CANCEL = 1;    // lcdRxLsrChargeCancel
-        public const int SHUTTER_CONFIG = 2;       // lcdRxShutterConfig
-        public const int SOFT_START_CONFIG = 7;    // lcdRxSoftStartConfig
-        public const int LSR_SHOTS = 4;            // lcdRxLsrShots
-        public const int RUN_STATUS = 14;          // lcdRxRunStatus
-        public const int INT_STATUS = 1;           // lcdRxIntStatus
-        public const int WAVEFORM = 64;            // lcdRxWaveform (32 samples * 2 bytes)
-        public const int DISCOVERY = 1;            // lcdRxDiscovery
-        public const int CHARGE_STATE = 3;         // lcdRxLsrChargeState
-        public const int CHARGE_VOLT = 2;          // lcdRxLsrChargeVolt
-
-        // Added for missing references (based on code usage)
-        public const int DIGITAL_IO = 8;           // For lcdRxDigitalIO / lcdTxDigitalIO (8 bytes as per code)
-        public const int SYSTEM_RESET = 0;         // For lcdRxSystemReset (assuming no data payload, adjust if needed)
+        Valid = 0,
+        InvalidSTX = 1,
+        InvalidETX = 2,
+        InvalidLength = 3,
+        ChecksumMismatch = 4,
+        InsufficientData = 5
     }
 }

@@ -21,55 +21,159 @@
             <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
             <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
             <conv:WaveformButtonTextConverter x:Key="WaveformButtonTextConverter"/>
-        
+            <conv:EnergyToStringConverter x:Key="EnergyToStringConverter"/>
+            <conv:VoltageToStringConverter x:Key="VoltageToStringConverter"/>
+            <conv:ConnectionStatusConverter x:Key="ConnectionStatusConverter"/>
+            <conv:ValueToPercentageConverter x:Key="ValueToPercentageConverter"/>
+            <conv:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
 
             <!-- Color Resources -->
-            <Color x:Key="AppBackgroundColorHex">#201F1E</Color>
-            <Color x:Key="PrimaryAccentColorHex">#0067C0</Color>
+            <Color x:Key="AppBackgroundColorHex">#F3F2F1</Color>
+            <Color x:Key="AppBackgroundColorDarkHex">#201F1E</Color>
+            <Color x:Key="PrimaryAccentColorHex">#0078D4</Color>
             <Color x:Key="SuccessColorHex">#107C10</Color>
             <Color x:Key="WarningColorHex">#F2C811</Color>
             <Color x:Key="ErrorColorHex">#D13438</Color>
+            <Color x:Key="InfoColorHex">#00BCF2</Color>
+            <Color x:Key="NeutralColorHex">#8A8886</Color>
 
-            <SolidColorBrush x:Key="AppBackgroundColor" Color="{StaticResource AppBackgroundColorHex}"/>
-            <SolidColorBrush x:Key="PrimaryAccentColor" Color="{StaticResource PrimaryAccentColorHex}"/>
-            <SolidColorBrush x:Key="SuccessColor" Color="{StaticResource SuccessColorHex}"/>
-            <SolidColorBrush x:Key="WarningColor" Color="{StaticResource WarningColorHex}"/>
-            <SolidColorBrush x:Key="ErrorColor" Color="{StaticResource ErrorColorHex}"/>
+            <!-- Safety-specific colors -->
+            <Color x:Key="LaserArmedColorHex">#FF4500</Color>
+            <Color x:Key="LaserFiringColorHex">#FF0000</Color>
+            <Color x:Key="LaserSafeColorHex">#32CD32</Color>
+            <Color x:Key="InterlockOKColorHex">#00FF00</Color>
+            <Color x:Key="InterlockErrorColorHex">#FF6B35</Color>
 
-            <!-- Brushes based on Color Resources -->
+            <!-- Brush Resources -->
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="{ThemeResource LayerFillColorDefault}"/>
             <SolidColorBrush x:Key="PrimaryAccentBrush" Color="{StaticResource PrimaryAccentColorHex}"/>
             <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColorHex}"/>
             <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColorHex}"/>
             <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColorHex}"/>
+            <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColorHex}"/>
+            <SolidColorBrush x:Key="NeutralBrush" Color="{StaticResource NeutralColorHex}"/>
+
+            <!-- Safety brushes -->
+            <SolidColorBrush x:Key="LaserArmedBrush" Color="{StaticResource LaserArmedColorHex}"/>
+            <SolidColorBrush x:Key="LaserFiringBrush" Color="{StaticResource LaserFiringColorHex}"/>
+            <SolidColorBrush x:Key="LaserSafeBrush" Color="{StaticResource LaserSafeColorHex}"/>
+            <SolidColorBrush x:Key="InterlockOKBrush" Color="{StaticResource InterlockOKColorHex}"/>
+            <SolidColorBrush x:Key="InterlockErrorBrush" Color="{StaticResource InterlockErrorColorHex}"/>
+
+            <!-- Typography Styles -->
+            <Style x:Key="HeaderStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="24"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Margin" Value="0,0,0,12"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
+            </Style>
+
+            <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,0,0,8"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
+            </Style>
+
+            <Style x:Key="SubheaderStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+
+            <Style x:Key="MetricValueStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="32"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Margin" Value="0,0,4,0"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
+            </Style>
+
+            <Style x:Key="MetricUnitStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="VerticalAlignment" Value="Bottom"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+
+            <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
 
             <!-- Button Styles -->
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource PrimaryAccentColor}"/>
+                <Setter Property="Background" Value="{StaticResource PrimaryAccentBrush}"/>
                 <Setter Property="Foreground" Value="White"/>
-                <Setter Property="Padding" Value="12,8"/>
+                <Setter Property="Padding" Value="16,10"/>
                 <Setter Property="CornerRadius" Value="4"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
             </Style>
 
-            <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-                <Setter Property="Background" Value="{StaticResource ErrorColor}"/>
+            <Style x:Key="DangerButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Padding" Value="16,10"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
             </Style>
 
-            <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-                <Setter Property="Background" Value="{StaticResource SuccessColor}"/>
+            <Style x:Key="SuccessButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Padding" Value="16,10"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
             </Style>
 
-            <Style x:Key="AccentButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Style x:Key="AccentButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
                 <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                <Setter Property="Padding" Value="16,10"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
             </Style>
 
-            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}"/>
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
-                <Setter Property="Padding" Value="12,8"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="16,10"/>
                 <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            </Style>
+
+            <!-- Emergency button for critical safety operations -->
+            <Style x:Key="EmergencyButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Padding" Value="20,12"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="MinHeight" Value="50"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="BorderBrush" Value="White"/>
             </Style>
 
             <!-- Card Styles -->
@@ -79,57 +183,157 @@
                 <Setter Property="Padding" Value="16"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+                <Setter Property="Margin" Value="0"/>
             </Style>
 
             <Style x:Key="ElevatedCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
                 <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Padding" Value="12"/>
+                <Setter Property="Padding" Value="16"/>
+                <Setter Property="Margin" Value="4"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+             </Style>
+
+            <Style x:Key="MetricCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="16"/>
                 <Setter Property="Margin" Value="4"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
             </Style>
 
-            <Style x:Key="MetricCardStyle" TargetType="Border" BasedOn="{StaticResource ElevatedCardStyle}">
+            <!-- Safety-critical card style with warning colors -->
+            <Style x:Key="SafetyCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="16"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="BorderBrush" Value="{StaticResource WarningBrush}"/>
                 <Setter Property="Margin" Value="0"/>
-                <Setter Property="Padding" Value="12"/>
             </Style>
 
-            <!-- Text Styles -->
-            <Style x:Key="HeaderStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="18"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="Margin" Value="0,0,0,8"/>
-            </Style>
-
-            <Style x:Key="SectionHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource HeaderStyle}">
-                <Setter Property="FontSize" Value="16"/>
-            </Style>
-
-            <Style x:Key="SubheaderStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
-                <Setter Property="Margin" Value="0,0,0,4"/>
-            </Style>
-
-            <Style x:Key="MetricValueStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="32"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="Margin" Value="0,0,4,0"/>
-            </Style>
-
-            <Style x:Key="MetricUnitStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="VerticalAlignment" Value="Bottom"/>
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
-            </Style>
-
+            <!-- Status Indicator Styles -->
             <Style x:Key="StatusIndicatorStyle" TargetType="Border">
-                <Setter Property="Width" Value="10"/>
-                <Setter Property="Height" Value="10"/>
-                <Setter Property="CornerRadius" Value="5"/>
-                <Setter Property="Margin" Value="0,0,6,0"/>
+                <Setter Property="Width" Value="12"/>
+                <Setter Property="Height" Value="12"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
             </Style>
+
+            <Style x:Key="LargeStatusIndicatorStyle" TargetType="Border">
+                <Setter Property="Width" Value="16"/>
+                <Setter Property="Height" Value="16"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Margin" Value="0,0,8,0"/>
+            </Style>
+
+            <!-- Control Styles -->
+            <Style x:Key="FormNumberBoxStyle" TargetType="NumberBox">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Margin" Value="0,4"/>
+                <Setter Property="SpinButtonPlacementMode" Value="Compact"/>
+            </Style>
+
+            <Style x:Key="FormComboBoxStyle" TargetType="ComboBox">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Margin" Value="0,4"/>
+            </Style>
+
+            <Style x:Key="FormToggleSwitchStyle" TargetType="ToggleSwitch">
+                <Setter Property="Margin" Value="0,8"/>
+            </Style>
+
+            <!-- Animation Resources -->
+            <Storyboard x:Key="PulseAnimation">
+                <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                                From="1.0" To="0.6" Duration="0:0:0.5" 
+                                AutoReverse="True" RepeatBehavior="Forever"/>
+            </Storyboard>
+
+            <Storyboard x:Key="FadeInAnimation">
+                <DoubleAnimation Storyboard.TargetProperty="Opacity" 
+                                From="0" To="1" Duration="0:0:0.3"/>
+            </Storyboard>
+
+            <!-- Navigation View Styles -->
+            <Style x:Key="SafetyNavigationViewStyle" TargetType="NavigationView">
+                <Setter Property="OpenPaneLength" Value="280"/>
+                <Setter Property="CompactModeThresholdWidth" Value="1200"/>
+                <Setter Property="ExpandedModeThresholdWidth" Value="1400"/>
+                <Setter Property="IsBackButtonVisible" Value="Collapsed"/>
+                <Setter Property="IsSettingsVisible" Value="True"/>
+            </Style>
+
+            <!-- Teaching Tip Styles -->
+            <Style x:Key="LogTeachingTipStyle" TargetType="TeachingTip">
+                <Setter Property="IsLightDismissEnabled" Value="True"/>
+                <Setter Property="PreferredPlacement" Value="TopLeft"/>
+            </Style>
+
+            <!-- Floating Action Button Style -->
+            <Style x:Key="FloatingActionButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="56"/>
+                <Setter Property="Height" Value="56"/>
+                <Setter Property="CornerRadius" Value="28"/>
+                <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize" Value="20"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="VerticalAlignment" Value="Bottom"/>
+                <Setter Property="Margin" Value="0,0,24,24"/>
+            </Style>
+
+            <!-- Progress Styles -->
+            <Style x:Key="SafetyProgressBarStyle" TargetType="ProgressBar">
+                <Setter Property="Height" Value="6"/>
+                <Setter Property="CornerRadius" Value="3"/>
+                <Setter Property="Margin" Value="0,8"/>
+            </Style>
+
+            <!-- Info Bar Styles for notifications -->
+            <Style x:Key="SafetyInfoBarStyle" TargetType="InfoBar">
+                <Setter Property="Margin" Value="0,8"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+
+            <!-- Expander styles for collapsible sections -->
+            <Style x:Key="SectionExpanderStyle" TargetType="Expander">
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Margin" Value="0,8"/>
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+
+            <!-- Menu flyout styles -->
+            <Style x:Key="ContextMenuStyle" TargetType="MenuFlyout">
+                <Setter Property="Placement" Value="Bottom"/>
+            </Style>
+
+            <!-- Tooltip styles -->
+            <Style x:Key="InformationToolTipStyle" TargetType="ToolTip">
+                <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="8"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+
+            <!-- Text selection styles -->
+            <Style x:Key="SelectableTextStyle" TargetType="TextBox">
+                <Setter Property="IsReadOnly" Value="True"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="FontFamily" Value="Consolas"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
