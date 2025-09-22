@@ -92,11 +92,11 @@ namespace KALD_Control.ViewModels
             SendLaserDelaysCommand = new RelayCommand(SendLaserDelays, CanExecuteDeviceCommand);
             ApplyShutterSettingsCommand = new RelayCommand(ApplyShutterSettings, CanExecuteDeviceCommand);
             ApplySoftStartCommand = new RelayCommand(ApplySoftStart, CanExecuteDeviceCommand);
-            RequestStatusCommand = new RelayCommand(() => _deviceManager.RequestSystemStatus(), CanExecuteDeviceCommand);
-            ReadEnergyCommand = new RelayCommand(() => _deviceManager.SendReadEnergy(), CanExecuteDeviceCommand);
-            ReadTemperatureCommand = new RelayCommand(() => _deviceManager.SendReadTemperature(), CanExecuteDeviceCommand);
-            SystemInfoCommand = new RelayCommand(() => _deviceManager.SendSystemInfoRequest(), CanExecuteDeviceCommand);
-            SystemResetCommand = new RelayCommand(() => _deviceManager.SendSystemReset(), CanExecuteDeviceCommand);
+            //RequestStatusCommand = new RelayCommand(() => _deviceManager.RequestSystemStatus(), CanExecuteDeviceCommand);
+            //ReadEnergyCommand = new RelayCommand(() => _deviceManager.SendReadEnergy(), CanExecuteDeviceCommand);
+            //ReadTemperatureCommand = new RelayCommand(() => _deviceManager.SendReadTemperature(), CanExecuteDeviceCommand);
+            //SystemInfoCommand = new RelayCommand(() => _deviceManager.SendSystemInfoRequest(), CanExecuteDeviceCommand);
+            //SystemResetCommand = new RelayCommand(() => _deviceManager.SendSystemReset(), CanExecuteDeviceCommand);
             RequestWaveformCommand = new RelayCommand(() => _deviceManager.RequestWaveformData(), () => CanExecuteDeviceCommand() && _waveformEnabled);
             ClearLogsCommand = new RelayCommand(() => LogText = "", () => true);
             DebugTestCommand = new RelayCommand(() => _logger.LogInformation("Debug test executed"), CanExecuteDeviceCommand); // 

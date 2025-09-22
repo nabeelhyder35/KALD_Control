@@ -125,7 +125,7 @@ namespace KALD_Control.Services
                 ResetParser();
                 _discoveryRetries = 0;
                 _deviceReady = false;
-                SendDiscoveryCommand();
+                //SendDiscoveryCommand();
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -183,30 +183,20 @@ namespace KALD_Control.Services
             }
         }
 
-        private void SendDiscoveryCommand()
+        private void SendDiscoveryResp()
         {
-            if (_discoveryRetries >= MAX_DISCOVERY_RETRIES)
-            {
-                Log("Max discovery retries reached; aborting");
-                _deviceReady = false;
-                DiscoveryResponseReceived?.Invoke(this, false);
-                return;
-            }
-
-            _discoveryRetries++;
-            SendCommand(LcdRxCommand.lcdRxDiscovery, new byte[] { 0x03, 0xE8 });
-            Log($"Sent discovery command (attempt {_discoveryRetries}/{MAX_DISCOVERY_RETRIES}): 2A 00 02 09 03 E8 0C 3A");
+            SendCommand(uiTxCommand.uiTxShutterConfig, new byte[] { (byte)ShutterModeType.autoMode, (byte)ShutterStateType.shutterClosed });
         }
 
-        public void SendVoltage(ushort voltage) => SendCommand(LcdRxCommand.lcdRxLsrVolts, ToBigEndian(voltage));
-        public void SendReadEnergy() => SendCommand(LcdRxCommand.lcdRxReadEnergy, new byte[0]);
-        public void SendReadTemperature() => SendCommand(LcdRxCommand.lcdRxReadTemperature, new byte[0]);
-        public void SendSystemInfoRequest() => SendCommand(LcdRxCommand.lcdRxSystemInfo, new byte[0]);
+        public void SendVoltage(ushort voltage) => SendCommand(uiTxCommand.uiTxLsrVolts, ToBigEndian(voltage));
+        //public void SendReadEnergy() => SendCommand(uiTxCommand.uiTxReadEnergy, new byte[0]);
+        //public void SendReadTemperature() => SendCommand(uiTxCommand.uiTxReadTemperature, new byte[0]);
+        //public void SendSystemInfoRequest() => SendCommand(uiTxCommand.uiTxSystemInfo, new byte[0]);
 
         public void SendCalibration(CalibrationData calibration)
         {
             byte[] data = ToBigEndian(calibration.CapVoltRange);
-            SendCommand(LcdRxCommand.lcdRxLsrCal, data);
+            SendCommand(uiTxCommand.uiTxLsrCal, data);
             Log($"Sent calibration: CapVoltRange={calibration.CapVoltRange}V");
         }
 
@@ -226,31 +216,31 @@ namespace KALD_Control.Services
             data.Add((byte)config.ShotMode);
             data.Add((byte)config.TrigMode);
 
-            if (data.Count != FpgaCommandLengths.LSR_PULSE_CONFIG)
+            if (data.Count != GetCommandLength(uiTxCommand.uiTxLsrPulseConfig))
             {
-                Log($"Pulse config length error: Got {data.Count}, expected {FpgaCommandLengths.LSR_PULSE_CONFIG}");
+                Log($"Pulse config length error: Got {data.Count}, expected {GetCommandLength(uiTxCommand.uiTxLsrPulseConfig)}");
                 return;
             }
 
-            SendCommand(LcdRxCommand.lcdRxLsrPulseConfig, data.ToArray());
+            SendCommand(uiTxCommand.uiTxLsrPulseConfig, data.ToArray());
             Log($"Sent pulse config: Frequency={config.Frequency / 10.0:F1}Hz, PulseWidth={config.PulseWidth}us, Shots={config.ShotTotal}, Delay1={config.Delay1}us, Delay2={config.Delay2}us, ShotMode={config.ShotMode}, TrigMode={config.TrigMode}");
         }
 
         public void SendStateCommand(LaserStateType state)
         {
-            SendCommand(LcdRxCommand.lcdRxLsrState, new[] { (byte)state });
+            SendCommand(uiTxCommand.uiTxLsrState, new[] { (byte)state });
             Log($"Sent state command: State={state}");
         }
 
         public void SendInterlockMask(byte mask)
         {
-            SendCommand(LcdRxCommand.lcdRxLsrIntMask, new[] { mask });
+            SendCommand(uiTxCommand.uiTxIntMask, new[] { mask });
             Log($"Sent interlock mask: 0x{mask:X2}");
         }
 
         public void SendWaveformState(bool enable)
         {
-            SendCommand(LcdRxCommand.lcdRxLsrWaveform, new[] { (byte)(enable ? 1 : 0) });
+            SendCommand(uiTxCommand.uiTxWaveState, new[] { (byte)(enable ? 1 : 0) });
             Log($"Sent waveform state: Enable={enable}");
         }
 
@@ -260,49 +250,49 @@ namespace KALD_Control.Services
             data.AddRange(ToBigEndian(delay1));
             data.AddRange(ToBigEndian(delay2));
 
-            if (data.Count != FpgaCommandLengths.LSR_DELAYS)
+            if (data.Count != GetCommandLength(uiTxCommand.uiTxLsrDelays))
             {
-                Log($"Laser delays length error: Got {data.Count}, expected {FpgaCommandLengths.LSR_DELAYS}");
+                Log($"Laser delays length error: Got {data.Count}, expected {GetCommandLength(uiTxCommand.uiTxLsrDelays)}");
                 return;
             }
 
-            SendCommand(LcdRxCommand.lcdRxLsrDelays, data.ToArray());
+            SendCommand(uiTxCommand.uiTxLsrDelays, data.ToArray());
             Log($"Sent delays: Delay1={delay1}us, Delay2={delay2}us");
         }
 
-        public void SendDigitalIOCommand()
-        {
-            SendCommand(LcdRxCommand.lcdRxDigitalIO, new byte[0]);
-            Log("Sent digital IO command");
-        }
+        //public void SendDigitalIOCommand()
+        //{
+        //    SendCommand(uiTxCommand.uiTxDigitalIO, new byte[0]);
+        //    Log("Sent digital IO command");
+        //}
 
-        public void SendSystemReset()
-        {
-            SendCommand(LcdRxCommand.lcdRxSystemReset, new byte[0]);
-            Log("Sent system reset");
-        }
+        //public void SendSystemReset()
+        //{
+        //    SendCommand(uiTxCommand.uiTxSystemReset, new byte[0]);
+        //    Log("Sent system reset");
+        //}
 
-        public void RequestSystemStatus()
-        {
-            SendCommand(LcdRxCommand.lcdRxLsrRunStatus, new byte[0]);
-            Log("Requested system status");
-        }
+        //public void RequestSystemStatus()
+        //{
+        //    SendCommand(uiTxCommand.uiTxLsrRunStatus, new byte[0]);
+        //    Log("Requested system status");
+        //}
 
         public void RequestWaveformData()
         {
-            SendCommand(LcdRxCommand.lcdRxLsrWaveform, new byte[0]);
+            SendCommand(uiTxCommand.uiTxWaveState, new byte[0]);
             Log("Requested waveform data");
         }
 
         public void SendChargeCancel()
         {
-            SendCommand(LcdRxCommand.lcdRxLsrChargeCancel, new byte[] { 1 });
+            SendCommand(uiTxCommand.uiTxLsrChargeCancel, new byte[] { 1 });
             Log("Sent charge cancel");
         }
 
         public void SendShutterConfig(ShutterConfig config)
         {
-            SendCommand(LcdRxCommand.lcdRxShutterConfig, new byte[] { (byte)config.ShutterMode, (byte)config.ShutterState });
+            SendCommand(uiTxCommand.uiTxShutterConfig, new byte[] { (byte)config.ShutterMode, (byte)config.ShutterState });
             Log($"Sent shutter config: Mode={config.ShutterMode}, State={config.ShutterState}");
         }
 
@@ -313,7 +303,7 @@ namespace KALD_Control.Services
             data.AddRange(ToBigEndian(config.IdleSetpoint));
             data.AddRange(ToBigEndian(config.RampCount));
 
-            SendCommand(LcdRxCommand.lcdRxSoftStartConfig, data.ToArray());
+            SendCommand(uiTxCommand.uiTxSoftStartConfig, data.ToArray());
             Log($"Sent soft start config: Enable={config.Enable}, Idle={config.IdleSetpoint}V, Ramp={config.RampCount}");
         }
 
@@ -333,7 +323,7 @@ namespace KALD_Control.Services
                 {
                     Log($"Error in OnDataReceived: {ex.Message}");
                     CommandError?.Invoke(this, ("OnDataReceived", ex));
-                    SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                    SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                 }
             }
         }
@@ -342,7 +332,7 @@ namespace KALD_Control.Services
         {
             _lastByteReceived = DateTime.Now;
             _incomingBuffer.Add(b);
-            Log($"Processing byte 0x{b:X2}, State={_currentState}, Buffer=[{BitConverter.ToString(_incomingBuffer.ToArray()).Replace("-", " ")}]");
+            //Log($"Processing byte 0x{b:X2}, State={_currentState}, Buffer=[{BitConverter.ToString(_incomingBuffer.ToArray()).Replace("-", " ")}]");
 
             switch (_currentState)
             {
@@ -399,7 +389,7 @@ namespace KALD_Control.Services
                     else
                     {
                         Log($"Invalid packet: Expected ETX (0x3A), got 0x{b:X2}");
-                        SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                        SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                     }
                     ResetParser();
                     break;
@@ -415,7 +405,7 @@ namespace KALD_Control.Services
                 if (validationResult != PacketValidationResult.Valid)
                 {
                     Log($"Packet validation failed: {validationResult}, Packet=[{BitConverter.ToString(packet).Replace("-", " ")}]");
-                    SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                    SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                     ResetParser();
                     return;
                 }
@@ -423,7 +413,7 @@ namespace KALD_Control.Services
                 if (!CommunicationHelper.ExtractPacketData(packet, out byte commandByte, out byte[] data))
                 {
                     Log($"Failed to extract packet data: Packet=[{BitConverter.ToString(packet).Replace("-", " ")}]");
-                    SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                    SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                     ResetParser();
                     return;
                 }
@@ -431,292 +421,105 @@ namespace KALD_Control.Services
                 string hexData = data.Length > 0 ? BitConverter.ToString(data).Replace("-", " ") : "No Data";
                 Log($"RECV: 0x{commandByte:X2}, DataLen={data.Length}, Data=[{hexData}], Packet=[{BitConverter.ToString(packet).Replace("-", " ")}]");
 
-                if (Enum.IsDefined(typeof(LcdRxCommand), commandByte))
+                if (Enum.IsDefined(typeof(uiRxCommand), commandByte))
                 {
-                    LcdRxCommand rxCommand = (LcdRxCommand)commandByte;
-                    Log($"Received LcdRxCommand: {rxCommand} (0x{commandByte:X2})");
+                    uiRxCommand rxCommand = (uiRxCommand)commandByte;
+                    Log($"Received uiTxCommand: {rxCommand} (0x{commandByte:X2})");
+
+                    if (data.Length != GetCommandLength(rxCommand))
+                    {
+                        Log($"Length mismatch");
+                        SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
+                        ResetParser();
+                        return;
+                    }
+
                     switch (rxCommand)
                     {
-                        case LcdRxCommand.lcdRxDiscovery:
-                            Log($"Received discovery response: Data=[{hexData}]");
-                            if (data.Length == 1 && data[0] == 0x00)
-                            {
-                                Log($"Device returned lcdRxDiscovery with data 0x00; retrying discovery (attempt {_discoveryRetries}/{MAX_DISCOVERY_RETRIES})");
-                                SendDiscoveryCommand();
-                            }
-                            else
-                            {
-                                Log($"Unexpected discovery data; expected LcdTxCommand.lcdTxDiscovery (0x08), got {hexData}");
-                                SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                                SendDiscoveryCommand();
-                            }
+                        case uiRxCommand.uiRxLsrState:
+                            StateUpdated?.Invoke(this, (LaserStateType)data[0]);
+                            Log($"Received state: {(LaserStateType)data[0]}");
                             break;
 
-                        case LcdRxCommand.lcdRxLsrState:
-                            if (data.Length >= 1)
-                            {
-                                StateUpdated?.Invoke(this, (LaserStateType)data[0]);
-                                Log($"Received state: {(LaserStateType)data[0]}");
-                            }
-                            else
-                            {
-                                Log($"Invalid state data length: {data.Length}");
-                                SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                            }
+                        case uiRxCommand.uiRxLsrPulseConfig:
+                            Log($"Received uiRxLsrPulseConfig: Data=[{hexData}]");
+                            //SendDiscoveryResp();
                             break;
 
-                        case LcdRxCommand.lcdRxLsrIntMask:
-                            if (data.Length >= 1)
-                            {
-                                IntMaskUpdated?.Invoke(this, data[0]);
-                                Log($"Received interlock mask: 0x{data[0]:X2}");
-                            }
-                            else
-                            {
-                                Log($"Invalid interlock mask data length: {data.Length}");
-                                SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                            }
+                        case uiRxCommand.uiRxLsrCount:
+                            Log($"Received uiRxLsrCount: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxLsrRunStatus:
+                            Log($"Received uiRxLsrRunStatus: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxLsrIntStatus:
+                            //IntMaskUpdated?.Invoke(this, data[0]);
+                            Log($"Received interlock status: 0x{data[0]:X2}");
+                            break;
+
+                        case uiRxCommand.uiRxLsrIntMask:
+                            IntMaskUpdated?.Invoke(this, data[0]);
+                            Log($"Received interlock mask: 0x{data[0]:X2}");
+                            break;
+
+                        case uiRxCommand.uiRxLsrWaveform:
+                            Log($"Received uiRxLsrWaveform: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxDiscovery:
+                            Log($"Received uiRxDiscovery: Data=[{hexData}]");
+                            SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxLsrVolts:
+                            Log($"Received uiRxLsrVolts: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxLsrChargeState:
+                            Log($"Received uiRxLsrChargeState: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxLsrChargeVolts:
+                            Log($"Received uiRxLsrChargeVolts: Data=[{hexData}]");
+                            //SendDiscoveryResp();
+                            break;
+
+                        case uiRxCommand.uiRxShutterConfig:
+                            //IntMaskUpdated?.Invoke(this, data[0]);
+                            Log($"Received uiRxShutterConfig: Data=[{hexData}]");
+                            break;
+
+                        case uiRxCommand.uiRxSoftStartConfig:
+                            //IntMaskUpdated?.Invoke(this, data[0]);
+                            Log($"Received uiRxSoftStartConfig: Data=[{hexData}]");
                             break;
 
                         default:
-                            Log($"Unhandled LcdRxCommand: {rxCommand} (0x{commandByte:X2})");
-                            SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                            Log($"Unhandled uiRxCommand: {rxCommand} (0x{commandByte:X2})");
+                            SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                             break;
                     }
                     ResetParser();
                     return;
                 }
-                else if (Enum.IsDefined(typeof(LcdTxCommand), commandByte))
-                {
-                    LcdTxCommand command = (LcdTxCommand)commandByte;
-                    int expectedLength = FpgaCommandLengths.GetCommandLength(command);
-
-                    if (expectedLength >= 0 && data.Length != expectedLength)
-                    {
-                        Log($"Invalid data length for {command}: Expected {expectedLength}, got {data.Length}");
-                        SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                        ResetParser();
-                        return;
-                    }
-
-                    Log($"Processing LcdTxCommand: {command} (0x{commandByte:X2})");
-
-                    switch (command)
-                    {
-                        case LcdTxCommand.lcdTxDiscovery:
-                            Log("Received discovery response");
-                            if (data.Length >= 2 && FromBigEndianUshort(data, 0) == 0x03E8)
-                            {
-                                Log("Discovery successful: NIOS system detected");
-                                _deviceReady = true;
-                                DiscoveryResponseReceived?.Invoke(this, true);
-                                _discoveryRetries = 0;
-                                // Request initial state and interlock mask to sync UI
-                                SendCommand(LcdRxCommand.lcdRxLsrState, new byte[0]);
-                                SendCommand(LcdRxCommand.lcdRxLsrIntMask, new byte[0]);
-                            }
-                            else
-                            {
-                                Log($"Unexpected discovery data: [{hexData}]");
-                                _deviceReady = false;
-                                DiscoveryResponseReceived?.Invoke(this, false);
-                                SendDiscoveryCommand();
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrPulseConfig:
-                            if (data.Length >= 14)
-                            {
-                                var config = new PulseConfig
-                                {
-                                    Frequency = FromBigEndianUshort(data, 0),
-                                    PulseWidth = FromBigEndianUshort(data, 2),
-                                    ShotTotal = FromBigEndianUshort(data, 4),
-                                    Delay1 = FromBigEndianUshort(data, 6),
-                                    Delay2 = FromBigEndianUshort(data, 8),
-                                    ShotMode = (ShotModeType)data[10],
-                                    TrigMode = (TriggerModeType)data[11]
-                                };
-                                PulseConfigUpdated?.Invoke(this, config);
-                                Log($"Received pulse config: Frequency={config.Frequency / 10.0:F1}Hz, PulseWidth={config.PulseWidth}us, Shots={config.ShotTotal}, Delay1={config.Delay1}us, Delay2={config.Delay2}us, ShotMode={config.ShotMode}, TrigMode={config.TrigMode}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrState:
-                            if (data.Length >= 1)
-                            {
-                                StateUpdated?.Invoke(this, (LaserStateType)data[0]);
-                                Log($"Received state: {(LaserStateType)data[0]}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrCount:
-                            if (data.Length >= 4)
-                            {
-                                uint shotCount = FromBigEndianUint(data, 0);
-                                ShotCountUpdated?.Invoke(this, shotCount);
-                                Log($"Received shot count: {shotCount}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrRunStatus:
-                            if (data.Length >= 14)
-                            {
-                                var status = new RunStatusData
-                                {
-                                    Energy = FromBigEndianUshort(data, 0),
-                                    Power = FromBigEndianUshort(data, 2),
-                                    ShotCount = FromBigEndianUint(data, 4),
-                                    Current = FromBigEndianUshort(data, 8),
-                                    VDroop = FromBigEndianUshort(data, 10),
-                                    State = (LaserStateType)data[12]
-                                };
-                                RunStatusUpdated?.Invoke(this, status);
-                                Log($"Received run status: Energy={status.Energy}, Power={status.Power}, Shots={status.ShotCount}, Current={status.Current}, VDroop={status.VDroop}, State={status.State}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrIntStatus:
-                            if (data.Length >= 1)
-                            {
-                                IntStatusUpdated?.Invoke(this, data[0]);
-                                Log($"Received interlock status: 0x{data[0]:X2}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrIntMask:
-                            if (data.Length >= 1)
-                            {
-                                IntMaskUpdated?.Invoke(this, data[0]);
-                                Log($"Received interlock mask: 0x{data[0]:X2}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrWaveform:
-                            if (data.Length >= 64)
-                            {
-                                ushort[] samples = new ushort[32];
-                                for (int i = 0; i < 32; i++)
-                                {
-                                    samples[i] = FromBigEndianUshort(data, i * 2);
-                                }
-                                var waveform = new WaveformData
-                                {
-                                    CaptureTime = DateTime.Now
-                                };
-                                Array.Copy(samples, waveform.Samples, 32);
-                                WaveformUpdated?.Invoke(this, waveform);
-                                Log($"Received waveform: {waveform.Samples.Length} samples");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrVolts:
-                            if (data.Length >= 2)
-                            {
-                                ushort volts = FromBigEndianUshort(data, 0);
-                                VoltsUpdated?.Invoke(this, volts);
-                                Log($"Received voltage: {volts}V");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrChargeState:
-                            if (data.Length >= 3)
-                            {
-                                var chargeState = new ChargeStateData
-                                {
-                                    MeasuredVolts = FromBigEndianUshort(data, 0),
-                                    ChargeDone = data[2] != 0
-                                };
-                                ChargeStateUpdated?.Invoke(this, chargeState);
-                                Log($"Received charge state: Volts={chargeState.MeasuredVolts}V, Done={chargeState.ChargeDone}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxShutterConfig:
-                            if (data.Length >= 2)
-                            {
-                                var config = new ShutterConfig
-                                {
-                                    ShutterMode = (ShutterModeType)(data[0] <= 1 ? data[0] : 0), // Validate enum
-                                    ShutterState = (ShutterStateType)(data[1] <= 1 ? data[1] : 0) // Validate enum
-                                };
-                                ShutterConfigUpdated?.Invoke(this, config);
-                                Log($"Received shutter config: Mode={config.ShutterMode}, State={config.ShutterState}");
-                            }
-                            else
-                            {
-                                Log($"Invalid shutter config data length: {data.Length}");
-                                SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxSoftStartConfig:
-                            if (data.Length >= 7)
-                            {
-                                var config = new SoftStartConfig
-                                {
-                                    Enable = data[0] != 0,
-                                    IdleSetpoint = FromBigEndianUshort(data, 1),
-                                    RampCount = FromBigEndianUint(data, 3)
-                                };
-                                SoftStartConfigUpdated?.Invoke(this, config);
-                                Log($"Received soft start config: Enable={config.Enable}, Idle={config.IdleSetpoint}V, Ramp={config.RampCount}");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrCal:
-                            if (data.Length >= 2)
-                            {
-                                var calibration = new CalibrationData
-                                {
-                                    CapVoltRange = FromBigEndianUshort(data, 0),
-                                    MeasuredVoltage = 0
-                                };
-                                CalibrationUpdated?.Invoke(this, calibration);
-                                Log($"Received calibration: CapVoltRange={calibration.CapVoltRange}V");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxLsrDelays:
-                            if (data.Length >= 4)
-                            {
-                                ushort delay1 = FromBigEndianUshort(data, 0);
-                                ushort delay2 = FromBigEndianUshort(data, 2);
-                                Log($"Received delays: Delay1={delay1}us, Delay2={delay2}us");
-                            }
-                            break;
-
-                        case LcdTxCommand.lcdTxDigitalIO:
-                            if (data.Length >= 8)
-                            {
-                                var dioState = new DigitalIOState
-                                {
-                                    InputStates = FromBigEndianUint(data, 0),
-                                    OutputStates = FromBigEndianUint(data, 4),
-                                    Timestamp = DateTime.Now
-                                };
-                                DigitalIOUpdated?.Invoke(this, dioState);
-                                Log($"Received digital IO: InputStates=0x{dioState.InputStates:X8}, OutputStates=0x{dioState.OutputStates:X8}");
-                            }
-                            break;
-
-                        default:
-                            Log($"Unhandled command: {command} (0x{commandByte:X2})");
-                            SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
-                            break;
-                    }
-                }
                 else
                 {
                     Log($"Invalid command byte: 0x{commandByte:X2}");
-                    SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                    SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
                 }
             }
             catch (Exception ex)
             {
                 Log($"Error processing packet: {ex.Message}");
                 CommandError?.Invoke(this, ("ProcessPacket", ex));
-                SendCommand(LcdRxCommand.lcdRxBadCmd, new byte[] { 0 });
+                SendCommand(uiTxCommand.uiTxBadCmd, new byte[] { 0 });
             }
             finally
             {
@@ -730,7 +533,7 @@ namespace KALD_Control.Services
             _currentState = ParserState.LookingForStart;
             _expectedDataLength = 0;
             _currentCommand = 0;
-            Log("Parser reset");
+            //Log("Parser reset");
         }
 
         private void StartParserTimeoutCheck()
@@ -750,34 +553,7 @@ namespace KALD_Control.Services
             });
         }
 
-        public void SendCommand(LcdRxCommand command, byte[] data)
-        {
-            if (!IsConnected)
-            {
-                Log("Cannot send command: Serial port not open");
-                return;
-            }
-
-            try
-            {
-                lock (_serialLock)
-                {
-                    byte[] packet = CommunicationHelper.CreatePacket((byte)command, data);
-                    _serialPort.Write(packet, 0, packet.Length);
-                    string hexPacket = BitConverter.ToString(packet).Replace("-", " ");
-                    Log($"SENT: {hexPacket}");
-                    string hexData = data?.Length > 0 ? BitConverter.ToString(data).Replace("-", " ") : "No Data";
-                    Log($"SENT: {command} (0x{(byte)command:X2}), DataLen={data?.Length ?? 0}, Data=[{hexData}], Checksum=0x{packet[packet.Length - 2]:X2}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error sending command {command}: {ex.Message}");
-                CommandError?.Invoke(this, (command.ToString(), ex));
-            }
-        }
-
-        public void SendCommand(LcdTxCommand command, byte[] data)
+        public void SendCommand(uiTxCommand command, byte[] data)
         {
             if (!IsConnected)
             {
@@ -807,20 +583,19 @@ namespace KALD_Control.Services
         private byte[] ToBigEndian(ushort value) => new byte[] { (byte)(value >> 8), (byte)(value & 0xFF) };
         private byte[] ToBigEndian(uint value) => new byte[] { (byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)(value & 0xFF) };
 
-        private ushort FromBigEndianUshort(byte[] data, int startIndex = 0)
-        {
-            if (data == null || startIndex < 0 || startIndex + 2 > data.Length)
-                return 0;
-            return (ushort)((data[startIndex] << 8) | data[startIndex + 1]);
-        }
-
-        private uint FromBigEndianUint(byte[] data, int startIndex = 0)
-        {
-            if (data == null || startIndex < 0 || startIndex + 4 > data.Length)
-                return 0;
-            return (uint)((data[startIndex] << 24) | (data[startIndex + 1] << 16) |
-                         (data[startIndex + 2] << 8) | data[startIndex + 3]);
-        }
+        //private ushort FromBigEndianUshort(byte[] data, int startIndex = 0)
+        //{
+        //    if (data == null || startIndex < 0 || startIndex + 2 > data.Length)
+        //        return 0;
+        //    return (ushort)((data[startIndex] << 8) | data[startIndex + 1]);
+        //}
+        //private uint FromBigEndianUint(byte[] data, int startIndex = 0)
+        //{
+        //    if (data == null || startIndex < 0 || startIndex + 4 > data.Length)
+        //        return 0;
+        //    return (uint)((data[startIndex] << 24) | (data[startIndex + 1] << 16) |
+        //                 (data[startIndex + 2] << 8) | data[startIndex + 3]);
+        //}
 
         private void Log(string message)
         {
@@ -855,48 +630,44 @@ namespace KALD_Control.Services
                 _cts = null;
             }
         }
-    }
-
-    public static class FpgaCommandLengths
-    {
-        public const int LSR_PULSE_CONFIG = 14;
-        public const int LSR_STATE = 1;
-        public const int LSR_SHOTS = 4;
-        public const int RUN_STATUS = 14;
-        public const int INT_STATUS = 1;
-        public const int INT_MASK = 1;
-        public const int WAVEFORM = 64;
-        public const int DISCOVERY = 2;
-        public const int LSR_VOLTS = 2;
-        public const int CHARGE_STATE = 3;
-        public const int CHARGE_VOLT = 2;
-        public const int SHUTTER_CONFIG = 2;
-        public const int SOFT_START_CONFIG = 7;
-        public const int LSR_CAL = 2;
-        public const int LSR_DELAYS = 4;
-        public const int DIGITAL_IO = 8;
-
-        public static int GetCommandLength(LcdTxCommand command)
+        public static int GetCommandLength(uiRxCommand command)
         {
             return command switch
             {
-                LcdTxCommand.lcdTxLsrPulseConfig => LSR_PULSE_CONFIG,
-                LcdTxCommand.lcdTxLsrState => LSR_STATE,
-                LcdTxCommand.lcdTxLsrCount => LSR_SHOTS,
-                LcdTxCommand.lcdTxLsrRunStatus => RUN_STATUS,
-                LcdTxCommand.lcdTxLsrIntStatus => INT_STATUS,
-                LcdTxCommand.lcdTxLsrIntMask => INT_MASK,
-                LcdTxCommand.lcdTxLsrWaveform => WAVEFORM,
-                LcdTxCommand.lcdTxDiscovery => DISCOVERY,
-                LcdTxCommand.lcdTxLsrVolts => LSR_VOLTS,
-                LcdTxCommand.lcdTxLsrChargeState => CHARGE_STATE,
-                LcdTxCommand.lcdTxLsrChargeVolts => CHARGE_VOLT,
-                LcdTxCommand.lcdTxShutterConfig => SHUTTER_CONFIG,
-                LcdTxCommand.lcdTxSoftStartConfig => SOFT_START_CONFIG,
-                LcdTxCommand.lcdTxLsrCal => LSR_CAL,
-                LcdTxCommand.lcdTxLsrDelays => LSR_DELAYS,
-                LcdTxCommand.lcdTxDigitalIO => DIGITAL_IO,
-                _ => -1
+                uiRxCommand.uiRxTestResp => 1,          // 1
+                uiRxCommand.uiRxFPGABadCmd => 1,        // same as receive
+                uiRxCommand.uiRxLsrState => 1,
+                uiRxCommand.uiRxLsrPulseConfig => 14,
+                uiRxCommand.uiRxLsrCount => 4,
+                uiRxCommand.uiRxLsrRunStatus => 14,
+                uiRxCommand.uiRxLsrIntStatus => 1,
+                uiRxCommand.uiRxLsrIntMask => 1,
+                uiRxCommand.uiRxLsrWaveform => 64,
+                uiRxCommand.uiRxDiscovery => 1,
+                uiRxCommand.uiRxLsrVolts => 2,
+                uiRxCommand.uiRxLsrChargeState => 3,
+                uiRxCommand.uiRxLsrChargeVolts => 2,
+                uiRxCommand.uiRxShutterConfig => 2,
+                uiRxCommand.uiRxSoftStartConfig => 7
+            };
+        }
+        public static int GetCommandLength(uiTxCommand command)
+        {
+            return command switch
+            {
+                uiTxCommand.uiTxBadCmd => 1,
+                uiTxCommand.uiTxNoCmd => 1,
+                uiTxCommand.uiTxFPGABadCmd => 1,
+                uiTxCommand.uiTxLsrPulseConfig => 14,
+                uiTxCommand.uiTxLsrState => 1,
+                uiTxCommand.uiTxIntMask => 1,
+                uiTxCommand.uiTxWaveState => 1,
+                uiTxCommand.uiTxLsrDelays => 4,
+                uiTxCommand.uiTxLsrCal => 2,
+                uiTxCommand.uiTxLsrVolts => 2,
+                uiTxCommand.uiTxLsrChargeCancel => 1,
+                uiTxCommand.uiTxShutterConfig => 2,
+                uiTxCommand.uiTxSoftStartConfig => 7
             };
         }
     }

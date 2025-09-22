@@ -89,62 +89,43 @@
     /// <summary>
     /// Defines commands sent to the device (receive commands).
     /// </summary>
-    public enum LcdRxCommand : byte
+    public enum uiTxCommand : byte
     {
-        lcdRxBadCmd = 0xFE,
-        lcdRxNoCmd = 0xFF,
-        lcdRxFPGABadCmd = 0x00,
-        lcdRxLsrPulseConfig = 0x01,
-        lcdRxLsrState = 0x02,
-        lcdRxLsrCount = 0x03,
-        lcdRxLsrRunStatus = 0x04,
-        lcdRxLsrIntStatus = 0x05,
-        lcdRxLsrIntMask = 0x06,
-        lcdRxLsrWaveform = 0x07,
-        lcdRxLsrChargeCancel = 0x08,
-        lcdRxDiscovery = 0x09,
-        lcdRxDiscoveryAck = 0x0A,
-        lcdRxLsrVolts = 0x0B,
-        lcdRxLsrChargeState = 0x0C,
-        lcdRxLsrChargeVolts = 0x0D,
-        lcdRxShutterConfig = 0x0E,
-        lcdRxSoftStartConfig = 0x0F,
-        lcdRxReadEnergy = 0x10,
-        lcdRxReadTemperature = 0x11,
-        lcdRxSystemInfo = 0x12,
-        lcdRxSystemReset = 0x13,
-        lcdRxLsrCal = 0x14,
-        lcdRxLsrDelays = 0x15,
-        lcdRxDigitalIO = 0x16
+        uiTxBadCmd = 0xFE,
+        uiTxNoCmd = 0xFF,
+        uiTxFPGABadCmd = 0x00,
+        uiTxLsrPulseConfig = 0x01,
+        uiTxLsrState = 0x02,
+        uiTxIntMask = 0x03,
+        uiTxWaveState = 0x04,
+        uiTxLsrDelays = 0x05,
+        uiTxLsrCal = 0x06,
+        uiTxLsrVolts = 0x07,
+        uiTxLsrChargeCancel = 0x08,
+        uiTxShutterConfig = 0x09,
+        uiTxSoftStartConfig = 0x0A
     }
 
     /// <summary>
     /// Defines commands received from the device (transmit commands).
     /// </summary>
-    public enum LcdTxCommand : byte
+    public enum uiRxCommand : byte
     {
-        lcdTxFPGABadCmd = 0x00,
-        lcdTxLsrPulseConfig = 0x01,
-        lcdTxLsrState = 0x02,
-        lcdTxLsrCount = 0x03,
-        lcdTxLsrRunStatus = 0x04,
-        lcdTxLsrIntStatus = 0x05,
-        lcdTxLsrIntMask = 0x06,
-        lcdTxLsrWaveform = 0x07,
-        lcdTxDiscovery = 0x08,
-        lcdTxLsrVolts = 0x09,
-        lcdTxLsrChargeState = 0x0A,
-        lcdTxLsrChargeVolts = 0x0B,
-        lcdTxShutterConfig = 0x0C,
-        lcdTxSoftStartConfig = 0x0D,
-        lcdTxReadEnergy = 0x0E,
-        lcdTxReadTemperature = 0x0F,
-        lcdTxSystemInfo = 0x10,
-        lcdTxFactorySettings = 0x11,
-        lcdTxInterlockStatus = 0x12,
-        lcdTxLsrCal = 0x13,
-        lcdTxLsrDelays = 0x14,
-        lcdTxDigitalIO = 0x15
+        uiRxTestResp = 0x00,
+        uiRxFPGABadCmd = 0x01,
+        uiRxLsrState = 0x02,
+        uiRxLsrPulseConfig = 0x03,
+        uiRxLsrCount = 0x04,
+        uiRxLsrRunStatus = 0x05,
+        uiRxLsrIntStatus = 0x06,
+        uiRxLsrIntMask = 0x07,
+        uiRxLsrWaveform = 0x08,
+        uiRxDiscovery = 0x09,
+        uiRxLsrVolts = 0x0A,
+        uiRxLsrChargeState = 0x0B,
+        uiRxLsrChargeVolts = 0x0C,
+        uiRxShutterConfig = 0x0D,
+        uiRxSoftStartConfig = 0x0E
     }
 
     /// <summary>
