@@ -158,5 +158,30 @@ namespace KALD_Control.Models
             Log($"Extracted: Command=0x{command:X2}, Data=[{BitConverter.ToString(data).Replace("-", " ")}]");
             return true;
         }
+
+        /// <summary>
+        /// Processes received data and invokes the callback with extracted command and data.
+        /// </summary>
+        /// <param name="buffer">The received data buffer.</param>
+        /// <param name="bytesRead">Number of bytes read.</param>
+        /// <param name="callback">Callback to invoke with command, data, and success status.</param>
+        public static void ProcessReceivedData(byte[] buffer, int bytesRead, Action<uiRxCommand, byte[], bool> callback)
+        {
+            if (buffer == null || bytesRead == 0)
+            {
+                Log("No data to process");
+                callback(uiRxCommand.lcdTxBadCmd, null, false);
+                return;
+            }
+
+            if (ExtractPacketData(buffer, out byte command, out byte[] data))
+            {
+                callback((uiRxCommand)command, data, true);
+            }
+            else
+            {
+                callback((uiRxCommand)command, data, false);
+            }
+        }
     }
 }

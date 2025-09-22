@@ -92,6 +92,37 @@ namespace KALD_Control.Converters
     }
 
     /// <summary>
+    /// Converts a boolean value to GridLength.
+    /// </summary>
+    // BoolToGridLengthConverter.cs
+    public class BoolToGridLengthConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            return (value is bool boolValue && boolValue) ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // ExpandCollapseIconConverter.cs
+    public class ExpandCollapseIconConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            return (value is bool boolValue && boolValue) ? "▼" : "▲";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
     /// Converts a boolean connection state to a button's text.
     /// </summary>
     public class ConnectionButtonTextConverter : IValueConverter
@@ -373,6 +404,94 @@ namespace KALD_Control.Converters
                 return isEnabled ? "WAVE OFF" : "WAVE ON";
             }
             return "WAVE ON";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class TriggerModeToStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is TriggerModeType triggerMode)
+            {
+                return triggerMode switch
+                {
+                    TriggerModeType.intTrigMode => "Internal Trigger",
+                    TriggerModeType.extTrigMode => "External Trigger",
+                    _ => triggerMode.ToString()
+                };
+            }
+            return value?.ToString() ?? "Unknown";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class ShotModeToStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is ShotModeType shotMode)
+            {
+                return shotMode switch
+                {
+                    ShotModeType.burstMode => "Burst Mode",
+                    ShotModeType.contMode => "Continuous Mode",
+                    _ => shotMode.ToString()
+                };
+            }
+            return value?.ToString() ?? "Unknown";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class ShutterModeToStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is ShutterModeType shutterMode)
+            {
+                return shutterMode switch
+                {
+                    ShutterModeType.autoMode => "Automatic Mode",
+                    ShutterModeType.manualMode => "Manual Mode",
+                    _ => shutterMode.ToString()
+                };
+            }
+            return value?.ToString() ?? "Unknown";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class ShutterStateToStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is ShutterStateType shutterState)
+            {
+                return shutterState switch
+                {
+                    ShutterStateType.shutterClosed => "Shutter Closed",
+                    ShutterStateType.shutterOpened => "Shutter Opened",
+                    _ => shutterState.ToString()
+                };
+            }
+            return value?.ToString() ?? "Unknown";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
