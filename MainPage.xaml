@@ -15,14 +15,6 @@
         <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
         <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
         <conv:EnergyToStringConverter x:Key="EnergyToStringConverter"/>
-
-        <!-- New Value Converters for Enum Display -->
-        <conv:TriggerModeToStringConverter x:Key="TriggerModeToStringConverter"/>
-        <conv:ShotModeToStringConverter x:Key="ShotModeToStringConverter"/>
-        <conv:ShutterModeToStringConverter x:Key="ShutterModeToStringConverter"/>
-        <conv:ShutterStateToStringConverter x:Key="ShutterStateToStringConverter"/>
-        <conv:BoolToGridLengthConverter x:Key="BoolToGridLengthConverter"/>
-        <conv:ExpandCollapseIconConverter x:Key="ExpandCollapseIconConverter"/>
         <Style x:Key="DataCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
@@ -76,8 +68,11 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="48"/>
+            <!-- Title bar -->
             <RowDefinition Height="*"/>
+            <!-- Main content -->
             <RowDefinition Height="300"/>
+            <!-- Log panel -->
         </Grid.RowDefinitions>
 
         <!-- Custom Title Bar -->
@@ -224,23 +219,11 @@
                                 <ComboBox Header="Serial Port" 
                                           ItemsSource="{Binding AvailablePorts}" 
                                           SelectedItem="{Binding SelectedPort, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Baud Rate" 
                                           ItemsSource="{Binding AvailableBaudRates}" 
                                           SelectedItem="{Binding SelectedBaudRate, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -310,7 +293,7 @@
                                 <NumberBox Header="Voltage Setpoint (V)"
                                            Value="{Binding VoltageSetpoint, Mode=TwoWay}"
                                            Minimum="0"
-                                           Maximum="1000"
+                                           Maximum="{x:Bind local:Constants.MaxVoltage}"
                                            HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Voltage" 
                                         Command="{Binding ApplySettingsCommand}"
@@ -328,39 +311,27 @@
                                 <TextBlock Text="Pulse Configuration" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Frequency (Hz)"
                                            Value="{Binding FrequencySetpoint, Mode=TwoWay}"
-                                           Minimum="0.1"
-                                           Maximum="1000"
+                                           Minimum="{x:Bind local:Constants.MinFrequency}"
+                                           Maximum="{x:Bind local:Constants.MaxFrequency}"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Pulse Width (μs)"
                                            Value="{Binding PulseWidth, Mode=TwoWay}"
-                                           Minimum="1"
-                                           Maximum="10000"
+                                           Minimum="{x:Bind local:Constants.MinPulseWidth}"
+                                           Maximum="{x:Bind local:Constants.MaxPulseWidth}"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Total Shots"
                                            Value="{Binding TotalShots, Mode=TwoWay}"
-                                           Minimum="1"
-                                           Maximum="1000000"
+                                           Minimum="{x:Bind local:Constants.MinTotalShots}"
+                                           Maximum="{x:Bind local:Constants.MaxTotalShots}"
                                            HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Trigger Mode"
                                           ItemsSource="{Binding TriggerModes}"
                                           SelectedItem="{Binding SelectedTriggerMode, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Converter={StaticResource TriggerModeToStringConverter}}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Shot Mode"
                                           ItemsSource="{Binding ShotModes}"
                                           SelectedItem="{Binding SelectedShotMode, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Converter={StaticResource ShotModeToStringConverter}}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Pulse Settings" 
                                         Command="{Binding ApplyPulseSettingsCommand}"
                                         Style="{StaticResource AccentButtonStyle}"
@@ -396,23 +367,11 @@
                                 <ComboBox Header="Shutter Mode"
                                           ItemsSource="{Binding ShutterModes}"
                                           SelectedItem="{Binding SelectedShutterMode, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Converter={StaticResource ShutterModeToStringConverter}}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Shutter State"
                                           ItemsSource="{Binding ShutterStates}"
                                           SelectedItem="{Binding SelectedShutterState, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Converter={StaticResource ShutterStateToStringConverter}}" FontSize="12"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Shutter Settings" 
                                         Command="{Binding ApplyShutterSettingsCommand}"
                                         Style="{StaticResource AccentButtonStyle}"
@@ -464,7 +423,7 @@
                                 <NumberBox Header="Idle Setpoint (V)"
                                            Value="{Binding IdleSetpoint, Mode=TwoWay}"
                                            Minimum="0"
-                                           Maximum="1000"
+                                           Maximum="{x:Bind local:Constants.MaxVoltage}"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Ramp Count"
                                            Value="{Binding RampCount, Mode=TwoWay}"
@@ -474,6 +433,47 @@
                                 <Button Content="Apply Soft Start" 
                                         Command="{Binding ApplySoftStartCommand}"
                                         Style="{StaticResource AccentButtonStyle}"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- System Commands -->
+                        <Border Style="{StaticResource DataCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="System Commands" Style="{StaticResource SectionHeaderStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Button Grid.Column="0" Grid.Row="0"
+                                            Content="Status" 
+                                            Command="{Binding RequestStatusCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,2,2"/>
+                                    <Button Grid.Column="1" Grid.Row="0"
+                                            Content="Energy" 
+                                            Command="{Binding ReadEnergyCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="2,0,0,2"/>
+                                    <Button Grid.Column="0" Grid.Row="1"
+                                            Content="Temp" 
+                                            Command="{Binding ReadTemperatureCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,2,2,0"/>
+                                    <Button Grid.Column="1" Grid.Row="1"
+                                            Content="Info" 
+                                            Command="{Binding SystemInfoCommand}"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="2,2,0,0"/>
+                                </Grid>
+                                <Button Content="System Reset" 
+                                        Command="{Binding SystemResetCommand}"
+                                        Style="{StaticResource DangerButtonStyle}"
                                         HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </Border>
@@ -500,39 +500,25 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="{Binding IsLogPanelExpanded, Converter={StaticResource BoolToGridLengthConverter}, Mode=OneWay}"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-
-                <!-- Log Header with Toggle Button -->
+                <!-- Log Header with Clear Button -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                    <Button Content="{Binding IsLogPanelExpanded, Converter={StaticResource ExpandCollapseIconConverter}, Mode=OneWay}"
-                    Command="{Binding ToggleLogPanelCommand}"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Padding="8,4"
-                    Margin="0,0,8,0"
-                    HorizontalAlignment="Left"/>
-
                     <TextBlock Text="System Log" FontWeight="SemiBold" VerticalAlignment="Center"/>
-
                     <Button Content="Clear Logs" 
-                    Command="{Binding ClearLogsCommand}" 
-                    Margin="12,0,0,0"
-                    Padding="8,4"
-                    HorizontalAlignment="Right"
-                    Style="{StaticResource SecondaryButtonStyle}"/>
+                            Command="{Binding ClearLogsCommand}" 
+                            Margin="12,0,0,0"
+                            Padding="8,4"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource SecondaryButtonStyle}"/>
                 </StackPanel>
-
-                <!-- Log Content (Collapsible) -->
-                <ScrollViewer Grid.Row="1" 
-                      VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Auto"
-                      Visibility="{Binding IsLogPanelExpanded, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
+                <!-- Log Content -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                     <TextBlock Text="{Binding LogText, Mode=OneWay}" 
-                       FontFamily="Consolas" 
-                       FontSize="11"
-                       TextWrapping="Wrap"
-                       Padding="12"/>
+                               FontFamily="Consolas" 
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Padding="12"/>
                 </ScrollViewer>
             </Grid>
         </Border>

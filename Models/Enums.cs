@@ -89,21 +89,21 @@
     /// <summary>
     /// Defines commands sent to the device (receive commands).
     /// </summary>
-    public enum uiTxCommand : sbyte
+    public enum uiTxCommand : byte
     {
-        lcdRxBadCmd = -2,
-        lcdRxNoCmd = -1,
-        lcdFPGABadCmd = 0,
-        lcdRxLsrPulseConfig = 1,
-        lcdRxLsrState = 2,
-        lcdRxIntMask = 3,
-        lcdRxWaveState = 4,
-        lcdRxLsrDelays = 5,
-        lcdRxLsrCal = 6,
-        lcdRxLsrVolts = 7,
-        lcdRxLsrChargeCancel = 8,
-        lcdRxShutterConfig = 9,
-        lcdRxSoftStartConfig = 10
+        uiTxBadCmd = 0xFE,
+        uiTxNoCmd = 0xFF,
+        uiTxFPGABadCmd = 0x00,
+        uiTxLsrPulseConfig = 0x01,
+        uiTxLsrState = 0x02,
+        uiTxIntMask = 0x03,
+        uiTxWaveState = 0x04,
+        uiTxLsrDelays = 0x05,
+        uiTxLsrCal = 0x06,
+        uiTxLsrVolts = 0x07,
+        uiTxLsrChargeCancel = 0x08,
+        uiTxShutterConfig = 0x09,
+        uiTxSoftStartConfig = 0x0A
     }
 
     /// <summary>
@@ -111,21 +111,21 @@
     /// </summary>
     public enum uiRxCommand : byte
     {
-        lcdTxTestResp = 0,
-        lcdTxBadCmd = 1,
-        lcdTxLsrState = 2,
-        lcdTxLsrPulseConfig = 3,
-        lcdTxLsrCount = 4,
-        lcdTxLsrRunStatus = 5,
-        lcdTxLsrIntStatus = 6,
-        lcdTxLsrIntMask = 7,
-        lcdTxLsrWaveform = 8,
-        lcdTxDiscovery = 9,
-        lcdTxLsrVolts = 10,
-        lcdTxLsrChargeState = 11,
-        lcdTxLsrChargeVolts = 12,
-        lcdTxShutterConfig = 13,
-        lcdTxSoftStartConfig = 14
+        uiRxTestResp = 0x00,
+        uiRxFPGABadCmd = 0x01,
+        uiRxLsrState = 0x02,
+        uiRxLsrPulseConfig = 0x03,
+        uiRxLsrCount = 0x04,
+        uiRxLsrRunStatus = 0x05,
+        uiRxLsrIntStatus = 0x06,
+        uiRxLsrIntMask = 0x07,
+        uiRxLsrWaveform = 0x08,
+        uiRxDiscovery = 0x09,
+        uiRxLsrVolts = 0x0A,
+        uiRxLsrChargeState = 0x0B,
+        uiRxLsrChargeVolts = 0x0C,
+        uiRxShutterConfig = 0x0D,
+        uiRxSoftStartConfig = 0x0E
     }
 
     /// <summary>

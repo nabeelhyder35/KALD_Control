@@ -27,6 +27,23 @@ namespace KALD_Control
                 this.DataContext = ViewModel;
             }
         }
+
+        // Helper method for interlock status binding in XAML (temporary, consider using InterlockStatusConverter)
+        public bool GetInterlockStatus(string interlockName)
+        {
+            return interlockName switch
+            {
+                "Power OK" => ViewModel.InterlockStatus.PowerOK,
+                "Temperature OK" => ViewModel.InterlockStatus.TempOK,
+                "Door OK" => ViewModel.InterlockStatus.DoorOK,
+                "Water OK" => ViewModel.InterlockStatus.WaterOK,
+                "Cover OK" => ViewModel.InterlockStatus.CoverOK,
+                "Discharge Temp OK" => ViewModel.InterlockStatus.DischargeTempOK,
+                "Over Voltage OK" => ViewModel.InterlockStatus.OverVoltageOK,
+                "Over Temp OK" => ViewModel.InterlockStatus.OverTempOK,
+                _ => false
+            };
+        }
     }
 
     // Value converter for binding InterlockStatus properties directly in XAML

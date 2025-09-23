@@ -171,11 +171,8 @@ namespace KALD_Control
                     switch (e.VirtualKey)
                     {
                         case Windows.System.VirtualKey.L:
-                            // Ctrl+L - Clear logs
-                            if (ViewModel.ClearLogsCommand.CanExecute(null))
-                            {
-                                ViewModel.ClearLogsCommand.Execute(null);
-                            }
+                            // Ctrl+L - Show log (if you still want this functionality)
+                            // page.ShowLog(); // Commented out since log is always visible now
                             e.Handled = true;
                             break;
 
@@ -188,9 +185,12 @@ namespace KALD_Control
                             e.Handled = true;
                             break;
 
-                        case Windows.System.VirtualKey.W:
-                            // Ctrl+W - Toggle waveform capture
-                            ViewModel.WaveformEnabled = !ViewModel.WaveformEnabled;
+                        case Windows.System.VirtualKey.D:
+                            // Ctrl+D - Debug info
+                            if (ViewModel.DebugTestCommand.CanExecute(null))
+                            {
+                                ViewModel.DebugTestCommand.Execute(null);
+                            }
                             e.Handled = true;
                             break;
                     }
@@ -209,15 +209,11 @@ namespace KALD_Control
                             e.Handled = true;
                             break;
 
-                        case Windows.System.VirtualKey.F5:
-                            // F5 - Refresh connection
-                            if (ViewModel.IsConnected)
+                        case Windows.System.VirtualKey.F1:
+                            // F1 - Show system status
+                            if (ViewModel.RequestStatusCommand.CanExecute(null))
                             {
-                                ViewModel.Disconnect();
-                            }
-                            else if (!string.IsNullOrEmpty(ViewModel.SelectedPort))
-                            {
-                                ViewModel.Connect();
+                                ViewModel.RequestStatusCommand.Execute(null);
                             }
                             e.Handled = true;
                             break;
