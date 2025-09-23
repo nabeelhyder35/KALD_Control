@@ -1,11 +1,13 @@
 ﻿using KALD_Control.Services;
 using KALD_Control.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
+using System.Diagnostics;
 using WinRT.Interop;
 
 namespace KALD_Control
@@ -22,122 +24,145 @@ namespace KALD_Control
 
             try
             {
-                // Get ViewModel from DI container with fallback
                 ViewModel = App.Services?.GetService<MainViewModel>();
                 if (ViewModel == null)
                 {
-                    // Fallback creation if DI fails
-                    var deviceManager = new DeviceManager(null);
+                    var loggerFactory = App.Services?.GetService<ILoggerFactory>() ?? new LoggerFactory();
+                    var logger = loggerFactory.CreateLogger<DeviceManager>();
+                    var deviceManager = new DeviceManager(logger);
                     var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-                    ViewModel = new MainViewModel(deviceManager, null, dispatcherQueue);
+                    ViewModel = new MainViewModel(deviceManager, loggerFactory, dispatcherQueue);
+                    Debug.WriteLine("MainViewModel initialized via fallback.");
+                }
+                else
+                {
+                    Debug.WriteLine("MainViewModel initialized via DI.");
                 }
             }
             catch (Exception ex)
             {
-                // Emergency fallback
-                var deviceManager = new DeviceManager(null);
+                Debug.WriteLine($"Failed to initialize MainViewModel: {ex.Message}");
+                var loggerFactory = new LoggerFactory();
+                var logger = loggerFactory.CreateLogger<DeviceManager>();
+                var deviceManager = new DeviceManager(logger);
                 var dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-                ViewModel = new MainViewModel(deviceManager, null, dispatcherQueue);
-                System.Diagnostics.Debug.WriteLine($"DI failed: {ex.Message}");
+                ViewModel = new MainViewModel(deviceManager, loggerFactory, dispatcherQueue);
             }
 
-            // Create and set up the frame
             _rootFrame = new Frame();
             this.Content = _rootFrame;
 
-            // Configure window
             ConfigureWindow();
 
-            // Set up event handlers
             this.Closed += MainWindow_Closed;
             this.Activated += MainWindow_Activated;
+
+
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
         {
-            // Only perform initialization when the window is fully active
-            if (args.WindowActivationState == WindowActivationState.Deactivated)
+            try
             {
-                return;
-            }
+                if (args.WindowActivationState == WindowActivationState.Deactivated)
+                {
+                    Debug.WriteLine("Window deactivated, skipping navigation.");
+                    return;
+                }
 
-            // Navigate to the main page if not already done
-            if (_rootFrame.Content == null)
+                if (_rootFrame.Content == null)
+                {
+                    Debug.WriteLine("Navigating to MainPage.");
+                    _rootFrame.Navigate(typeof(MainPage), ViewModel);
+                }
+                else
+                {
+                    Debug.WriteLine("Frame content already set.");
+                }
+
+                if (this.CoreWindow != null)
+                {
+                    this.CoreWindow.KeyDown += MainWindow_KeyDown;
+                    Debug.WriteLine("KeyDown event handler attached.");
+                }
+
+                this.Activated -= MainWindow_Activated;
+            }
+            catch (Exception ex)
             {
-                _rootFrame.Navigate(typeof(MainPage), ViewModel);
+                Debug.WriteLine($"MainWindow_Activated failed: {ex.Message}");
+                LogError("Initialization Error", "Failed to load the main page.", ex);
             }
-
-            // Set up keyboard event handling
-            if (this.CoreWindow != null)
-            {
-                this.CoreWindow.KeyDown += MainWindow_KeyDown;
-            }
-
-            // Unsubscribe from this event to prevent multiple navigations
-            this.Activated -= MainWindow_Activated;
         }
 
         private void ConfigureWindow()
         {
             try
             {
-                // Get window handle and AppWindow object
                 var hWnd = WindowNative.GetWindowHandle(this);
                 var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 _appWindow = AppWindow.GetFromWindowId(windowId);
 
-                // Set window properties
-                if (_appWindow is not null)
+                if (_appWindow != null)
                 {
-                    // Set minimum and default size
-                    _appWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+                    // Replace this line:
+                    // var displayArea = DisplayArea.GetFromWindowId(windowId);
 
-                    // Set title bar
+                    // With the following line, specifying a fallback value (e.g., DisplayAreaFallback.Primary):
+                    var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
+                    if (displayArea != null)
+                    {
+                        // Set to full screen or maximized
+                        this.AppWindow.SetPresenter(AppWindowPresenterKind.Default);
+                        this.AppWindow.MoveAndResize(displayArea.WorkArea);
+
+                        // Alternatively, you can maximize the window:
+                        // this.AppWindow.SetPresenter(AppWindowPresenterKind.Maximized);
+                    }
+                    else
+                    {
+                        // Fallback to a large size
+                        _appWindow.Resize(new Windows.Graphics.SizeInt32(1600, 1000));
+                    }
+
+                    // Rest of your title bar configuration...
                     var titleBar = _appWindow.TitleBar;
                     titleBar.ExtendsContentIntoTitleBar = true;
                     titleBar.ButtonBackgroundColor = Colors.Transparent;
                     titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-
-                    // Set custom title bar colors to match theme
                     titleBar.BackgroundColor = Colors.Transparent;
                     titleBar.ForegroundColor = Colors.White;
                     titleBar.InactiveBackgroundColor = Colors.Transparent;
                     titleBar.InactiveForegroundColor = Colors.Gray;
-
-                    // Title bar button colors
                     titleBar.ButtonForegroundColor = Colors.White;
                     titleBar.ButtonHoverBackgroundColor = Microsoft.UI.Colors.DarkGray;
                     titleBar.ButtonHoverForegroundColor = Colors.White;
                     titleBar.ButtonPressedBackgroundColor = Microsoft.UI.Colors.Gray;
                     titleBar.ButtonPressedForegroundColor = Colors.White;
 
-                    // Apply initial theme colors
                     UpdateTitleBarColors();
+                    Debug.WriteLine("Window configured for full screen.");
                 }
-
-                // Set window icon if available
-                try
+                else
                 {
-                    // AppWindow.SetIcon("Assets/Square44x44Logo.scale-200.png");
-                }
-                catch
-                {
-                    // Icon file not found, continue without it
+                    Debug.WriteLine("AppWindow is null.");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Window configuration failed: {ex.Message}");
+                Debug.WriteLine($"Window configuration failed: {ex.Message}");
+                LogError("Window Configuration", "Failed to configure window.", ex);
+
+                // Fallback: just maximize the window
+                this.AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
             }
         }
-
         private void UpdateTitleBarColors()
         {
             if (_appWindow?.TitleBar is not null)
             {
                 var titleBar = _appWindow.TitleBar;
 
-                // Update title bar colors based on current theme
                 if (Application.Current.RequestedTheme == ApplicationTheme.Dark)
                 {
                     titleBar.ButtonForegroundColor = Colors.White;
@@ -148,22 +173,28 @@ namespace KALD_Control
                     titleBar.ButtonForegroundColor = Colors.Black;
                     titleBar.ButtonHoverBackgroundColor = Microsoft.UI.Colors.LightGray;
                 }
+                Debug.WriteLine("Title bar colors updated.");
             }
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
-            // Dispose of ViewModel to clean up resources
-            ViewModel?.Dispose();
+            try
+            {
+                ViewModel?.Dispose();
+                Debug.WriteLine("ViewModel disposed.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error disposing ViewModel: {ex.Message}");
+                LogError("Disposal Error", "Error disposing ViewModel.", ex);
+            }
         }
 
-        // Handle keyboard shortcuts for power users
         private void MainWindow_KeyDown(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.KeyEventArgs e)
         {
-            // Get the current page to access UI elements if needed
             if (_rootFrame.Content is MainPage page)
             {
-                // Handle keyboard shortcuts
                 var ctrlPressed = sender.GetKeyState(Windows.System.VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
                 if (ctrlPressed)
@@ -171,53 +202,59 @@ namespace KALD_Control
                     switch (e.VirtualKey)
                     {
                         case Windows.System.VirtualKey.L:
-                            // Ctrl+L - Clear logs
                             if (ViewModel.ClearLogsCommand.CanExecute(null))
                             {
                                 ViewModel.ClearLogsCommand.Execute(null);
+                                Debug.WriteLine("ClearLogsCommand executed.");
                             }
                             e.Handled = true;
                             break;
 
                         case Windows.System.VirtualKey.R:
-                            // Ctrl+R - Refresh ports
                             if (ViewModel.RefreshPortsCommand.CanExecute(null))
                             {
                                 ViewModel.RefreshPortsCommand.Execute(null);
+                                Debug.WriteLine("RefreshPortsCommand executed.");
                             }
                             e.Handled = true;
                             break;
 
                         case Windows.System.VirtualKey.W:
-                            // Ctrl+W - Toggle waveform capture
                             ViewModel.WaveformEnabled = !ViewModel.WaveformEnabled;
+                            Debug.WriteLine($"WaveformEnabled toggled to {ViewModel.WaveformEnabled}.");
                             e.Handled = true;
                             break;
                     }
                 }
                 else
                 {
-                    // Emergency shortcuts without Ctrl modifier for safety
                     switch (e.VirtualKey)
                     {
                         case Windows.System.VirtualKey.Escape:
-                            // ESC - Emergency stop
                             if (ViewModel.StopCommand.CanExecute(null))
                             {
                                 ViewModel.StopCommand.Execute(null);
+                                Debug.WriteLine("StopCommand executed.");
                             }
                             e.Handled = true;
                             break;
 
                         case Windows.System.VirtualKey.F5:
-                            // F5 - Refresh connection
                             if (ViewModel.IsConnected)
                             {
-                                ViewModel.Disconnect();
+                                if (ViewModel.DisconnectCommand.CanExecute(null))
+                                {
+                                    ViewModel.DisconnectCommand.Execute(null);
+                                    Debug.WriteLine("DisconnectCommand executed.");
+                                }
                             }
-                            else if (!string.IsNullOrEmpty(ViewModel.SelectedPort))
+                            else
                             {
-                                ViewModel.Connect();
+                                if (ViewModel.ConnectCommand.CanExecute(null))
+                                {
+                                    ViewModel.ConnectCommand.Execute(null);
+                                    Debug.WriteLine("ConnectCommand executed.");
+                                }
                             }
                             e.Handled = true;
                             break;
@@ -226,50 +263,36 @@ namespace KALD_Control
             }
         }
 
-        // Show confirmation dialog for critical operations
-        private async System.Threading.Tasks.Task<bool> ShowConfirmationDialog(string title, string message, string primaryButtonText = "Confirm", string secondaryButtonText = "Cancel")
+        private void LogError(string title, string message, Exception ex = null)
         {
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = message,
-                PrimaryButtonText = primaryButtonText,
-                SecondaryButtonText = secondaryButtonText,
-                DefaultButton = ContentDialogButton.Secondary,
-                XamlRoot = _rootFrame.XamlRoot
-            };
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            var errorMessage = $"[{timestamp}] ERROR: {title} - {message}";
 
-            var result = await dialog.ShowAsync();
-            return result == ContentDialogResult.Primary;
-        }
-
-        // Enhanced error handling with user-friendly messages
-        private async void ShowErrorDialog(string title, string message, Exception ex = null)
-        {
-            var detailedMessage = message;
             if (ex != null)
             {
-                detailedMessage += $"\n\nTechnical details: {ex.Message}";
+                errorMessage += $"\nTechnical details: {ex.Message}";
+                if (ex.StackTrace != null)
+                {
+                    errorMessage += $"\nStack trace: {ex.StackTrace}";
+                }
             }
 
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = detailedMessage,
-                CloseButtonText = "OK",
-                XamlRoot = _rootFrame.XamlRoot
-            };
+            Debug.WriteLine(errorMessage);
 
-            await dialog.ShowAsync();
+            // Also log to the ViewModel's log if available
+            if (ViewModel != null)
+            {
+                ViewModel.LogText += errorMessage + Environment.NewLine;
+            }
         }
 
-        // Method to handle system notifications
         private void ShowNotification(string title, string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
         {
-            // In a full implementation, this would show a toast notification or info bar
-            // For now, we'll add it to the log
             var timestamp = DateTime.Now.ToString("HH:mm:ss");
-            ViewModel.LogText += $"[{timestamp}] {severity}: {title} - {message}{Environment.NewLine}";
+            if (ViewModel != null)
+            {
+                ViewModel.LogText += $"[{timestamp}] {severity}: {title} - {message}{Environment.NewLine}";
+            }
         }
     }
 }

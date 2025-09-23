@@ -1,5 +1,6 @@
 ﻿using KALD_Control.Services;
 using KALD_Control.ViewModels;
+using LiveChartsCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
@@ -57,9 +58,9 @@ namespace KALD_Control
             serviceCollection.AddSingleton<MainViewModel>(provider =>
             {
                 var deviceManager = provider.GetService<DeviceManager>();
-                var logger = provider.GetService<ILogger<MainViewModel>>();
+                var loggerFactory = provider.GetService<ILoggerFactory>();
                 var dispatcherQueue = DispatcherQueue.GetForCurrentThread();
-                return new MainViewModel(deviceManager, logger, dispatcherQueue);
+                return new MainViewModel(deviceManager, loggerFactory, dispatcherQueue);
             });
 
             // Build the service provider

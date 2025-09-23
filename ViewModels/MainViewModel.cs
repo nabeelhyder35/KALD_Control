@@ -1,17 +1,13 @@
-﻿using KALD_Control.Models;
-using KALD_Control.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO.Ports;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using KALD_Control.Models;
+using KALD_Control.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 
 namespace KALD_Control.ViewModels
 {
@@ -30,7 +26,8 @@ namespace KALD_Control.ViewModels
         private double _frequencySetpoint = 10.0;
         private ushort _pulseWidth = 200;
         private uint _totalShots = 100;
-        private StringBuilder _logText = new StringBuilder();
+        private string _logText = string.Empty;
+        private readonly StringBuilder _logBuilder = new StringBuilder();
         private InterlockStatus _interlockStatus = new InterlockStatus();
         private double _energy = 0;
         private TriggerModeType _selectedTriggerMode = TriggerModeType.intTrigMode;
@@ -46,80 +43,44 @@ namespace KALD_Control.ViewModels
         private ushort _delay2 = 200;
         private bool _isLogPanelExpanded = false;
         private DateTime _lastCommandTime = DateTime.MinValue;
-        private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
+        private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(200);
+        private ushort _measuredVoltage = 0;
+        private bool _isCharging = false;
+        private ushort _chargeVolts = 0;
+        private ushort[] _waveform = new ushort[32];
 
         public ObservableCollection<string> AvailablePorts { get; } = new ObservableCollection<string>();
-        public ObservableCollection<int> AvailableBaudRates { get; } = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600 };
-        public ObservableCollection<TriggerModeType> TriggerModes { get; } = new ObservableCollection<TriggerModeType>(Enum.GetValues(typeof(TriggerModeType)).Cast<TriggerModeType>());
-        public ObservableCollection<ShotModeType> ShotModes { get; } = new ObservableCollection<ShotModeType>(Enum.GetValues(typeof(ShotModeType)).Cast<ShotModeType>());
-        public ObservableCollection<ShutterModeType> ShutterModes { get; } = new ObservableCollection<ShutterModeType>(Enum.GetValues(typeof(ShutterModeType)).Cast<ShutterModeType>());
-        public ObservableCollection<ShutterStateType> ShutterStates { get; } = new ObservableCollection<ShutterStateType>(Enum.GetValues(typeof(ShutterStateType)).Cast<ShutterStateType>());
-
+        public ObservableCollection<int> AvailableBaudRates { get; } = new ObservableCollection<int> { 9600, 19200, 38400, 57600, 115200, 230400, 460800 };
+        public ObservableCollection<TriggerModeType> TriggerModes { get; } = new ObservableCollection<TriggerModeType> { TriggerModeType.intTrigMode, TriggerModeType.extTrigMode };
+        public ObservableCollection<ShotModeType> ShotModes { get; } = new ObservableCollection<ShotModeType> { ShotModeType.burstMode, ShotModeType.contMode };
+        public ObservableCollection<ShutterModeType> ShutterModes { get; } = new ObservableCollection<ShutterModeType> { ShutterModeType.autoMode, ShutterModeType.manualMode };
+        public ObservableCollection<ShutterStateType> ShutterStates { get; } = new ObservableCollection<ShutterStateType> { ShutterStateType.shutterClosed, ShutterStateType.shutterOpened };
         public DeviceData DeviceData { get; private set; } = new DeviceData();
 
-        public bool IsLogPanelExpanded
-        {
-            get => _isLogPanelExpanded;
-            set => SetProperty(ref _isLogPanelExpanded, value);
-        }
-
+        public ICommand ConnectCommand { get; }
+        public ICommand DisconnectCommand { get; }
+        public ICommand SendPulseConfigCommand { get; }
+        public ICommand SendShutterConfigCommand { get; }
+        public ICommand SendSoftStartConfigCommand { get; }
+        public ICommand SendInterlockMaskCommand { get; }
+        public ICommand SendVoltageCommand { get; }
+        public ICommand SendCalibrationCommand { get; }
+        public ICommand ApplyDelaysCommand { get; }
+        public ICommand SendWaveformStateCommand { get; }
+        public ICommand SendChargeCancelCommand { get; }
+        public ICommand RefreshPortsCommand { get; }
+        public ICommand ClearLogsCommand { get; }
+        public ICommand StopCommand { get; }
+        public ICommand ArmCommand { get; }
+        public ICommand DisarmCommand { get; }
+        public ICommand FireCommand { get; }
+        public ICommand ApplySettingsCommand { get; }
+        public ICommand ApplyPulseSettingsCommand { get; }
+        public ICommand ApplyShutterSettingsCommand { get; }
+        public ICommand ApplySoftStartCommand { get; }
+        public ICommand RequestWaveformCommand { get; }
         public ICommand ToggleLogPanelCommand { get; }
 
-        public MainViewModel(DeviceManager deviceManager, ILogger<MainViewModel> logger, DispatcherQueue dispatcherQueue)
-        {
-            _deviceManager = deviceManager ?? throw new ArgumentNullException(nameof(deviceManager));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
-
-            _deviceManager.StateUpdated += OnStateUpdated;
-            _deviceManager.PulseConfigUpdated += OnPulseConfigUpdated;
-            _deviceManager.ShotCountUpdated += OnShotCountUpdated;
-            _deviceManager.RunStatusUpdated += OnRunStatusUpdated;
-            _deviceManager.IntStatusUpdated += OnIntStatusUpdated;
-            _deviceManager.IntMaskUpdated += OnIntMaskUpdated;
-            _deviceManager.WaveformUpdated += OnWaveformUpdated;
-            _deviceManager.VoltsUpdated += OnVoltsUpdated;
-            _deviceManager.ChargeStateUpdated += OnChargeStateUpdated;
-            _deviceManager.ShutterConfigUpdated += OnShutterConfigUpdated;
-            _deviceManager.SoftStartConfigUpdated += OnSoftStartConfigUpdated;
-            _deviceManager.CalibrationUpdated += OnCalibrationUpdated;
-            _deviceManager.LogMessage += OnLogMessage;
-            _deviceManager.CommandError += OnCommandError;
-            _deviceManager.DiscoveryResponseReceived += OnDiscoveryResponseReceived;
-
-            ConnectCommand = new RelayCommand(Connect, () => !_isConnected);
-            DisconnectCommand = new RelayCommand(Disconnect, () => _isConnected);
-            RefreshPortsCommand = new RelayCommand(RefreshPorts, () => true);
-            ArmCommand = new RelayCommand(() => _deviceManager.SendCommand(uiTxCommand.lcdRxLsrState, new byte[] { (byte)LaserStateType.lsrArming }), CanExecuteDeviceCommand);
-            DisarmCommand = new RelayCommand(() => _deviceManager.SendCommand(uiTxCommand.lcdRxLsrState, new byte[] { (byte)LaserStateType.lsrDisarming }), CanExecuteDeviceCommand);
-            FireCommand = new RelayCommand(
-                () => _deviceManager.SendCommand(uiTxCommand.lcdRxLsrState, new byte[] { (byte)LaserStateType.lsrRunning }),
-                () => CanExecuteDeviceCommand() && IsLaserReadyToFire()); StopCommand = new RelayCommand(() => _deviceManager.SendCommand(uiTxCommand.lcdRxLsrState, new byte[] { (byte)LaserStateType.lsrPausing }), CanExecuteDeviceCommand);
-
-            ApplySettingsCommand = new RelayCommand(ApplyVoltage, CanExecuteDeviceCommand);
-            ApplyPulseSettingsCommand = new RelayCommand(ApplyPulseSettings, CanExecuteDeviceCommand);
-            SendInterlockMaskCommand = new RelayCommand(SendInterlockMask, CanExecuteDeviceCommand);
-            SendLaserDelaysCommand = new RelayCommand(SendLaserDelays, CanExecuteDeviceCommand);
-            ApplyShutterSettingsCommand = new RelayCommand(ApplyShutterSettings, CanExecuteDeviceCommand);
-            ApplySoftStartCommand = new RelayCommand(ApplySoftStart, CanExecuteDeviceCommand);
-            ApplyCalibrationCommand = new RelayCommand(ApplyCalibration, CanExecuteDeviceCommand);
-            // In MainViewModel constructor, replace the RequestWaveformCommand line:
-            RequestWaveformCommand = new RelayCommand(
-                () => _deviceManager.SendCommand(uiTxCommand.lcdRxWaveState, new byte[] { (byte)(_waveformEnabled ? 1 : 0) }),
-                CanExecuteDeviceCommand); 
-            ClearLogsCommand = new RelayCommand(() => LogText = "", () => true);
-
-            DebugTestCommand = new RelayCommand(() => _logger.LogInformation("Debug test executed"), CanExecuteDeviceCommand);
-            ToggleLogPanelCommand = new RelayCommand(() => IsLogPanelExpanded = !IsLogPanelExpanded, () => true);
-
-            RefreshPorts();
-        }
-        private bool IsLaserReadyToFire()
-        {
-            return DeviceData.SystemState == LaserStateType.lsrArmed ||
-                   DeviceData.SystemState == LaserStateType.lsrRunning ||
-                   DeviceData.SystemState == LaserStateType.lsrPaused;
-        }
         public string ConnectionStatus
         {
             get => _connectionStatus;
@@ -133,8 +94,19 @@ namespace KALD_Control.ViewModels
             {
                 if (SetProperty(ref _isConnected, value))
                 {
-                    ConnectionStatus = value ? (_deviceReady ? "Connected" : "Connecting...") : "Disconnected";
-                    NotifyCommandsCanExecuteChanged();
+                    (ConnectCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (DisconnectCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ArmCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (DisarmCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (FireCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (StopCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplySettingsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyPulseSettingsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyShutterSettingsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplySoftStartCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyDelaysCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RequestWaveformCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (SendInterlockMaskCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -146,8 +118,8 @@ namespace KALD_Control.ViewModels
             {
                 if (SetProperty(ref _deviceReady, value))
                 {
-                    ConnectionStatus = value ? "Connected" : (_isConnected ? "Discovery Failed" : "Disconnected");
-                    NotifyCommandsCanExecuteChanged();
+                    (ArmCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (FireCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -155,7 +127,14 @@ namespace KALD_Control.ViewModels
         public string SelectedPort
         {
             get => _selectedPort;
-            set => SetProperty(ref _selectedPort, value);
+            set
+            {
+                if (SetProperty(ref _selectedPort, value))
+                {
+                    (ConnectCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RefreshPortsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
         }
 
         public int SelectedBaudRate
@@ -167,37 +146,67 @@ namespace KALD_Control.ViewModels
         public ushort VoltageSetpoint
         {
             get => _voltageSetpoint;
-            set => SetProperty(ref _voltageSetpoint, value);
+            set
+            {
+                if (SetProperty(ref _voltageSetpoint, value))
+                {
+                    Task.Run(() => SendVoltageAsync());
+                }
+            }
         }
 
         public double FrequencySetpoint
         {
             get => _frequencySetpoint;
-            set => SetProperty(ref _frequencySetpoint, value);
+            set
+            {
+                if (SetProperty(ref _frequencySetpoint, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public ushort PulseWidth
         {
             get => _pulseWidth;
-            set => SetProperty(ref _pulseWidth, value);
+            set
+            {
+                if (SetProperty(ref _pulseWidth, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public uint TotalShots
         {
             get => _totalShots;
-            set => SetProperty(ref _totalShots, value);
+            set
+            {
+                if (SetProperty(ref _totalShots, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public string LogText
         {
-            get => _logText.ToString();
-            set => SetProperty(ref _logText, new StringBuilder(value));
+            get => _logText;
+            set => _dispatcherQueue.TryEnqueue(() => SetProperty(ref _logText, value));
         }
 
         public InterlockStatus InterlockStatus
         {
             get => _interlockStatus;
-            set => SetProperty(ref _interlockStatus, value);
+            set
+            {
+                if (SetProperty(ref _interlockStatus, value))
+                {
+                    Task.Run(() => SendInterlockMaskAsync());
+                }
+            }
         }
 
         public double Energy
@@ -209,49 +218,85 @@ namespace KALD_Control.ViewModels
         public TriggerModeType SelectedTriggerMode
         {
             get => _selectedTriggerMode;
-            set => SetProperty(ref _selectedTriggerMode, value);
+            set
+            {
+                if (SetProperty(ref _selectedTriggerMode, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public ShotModeType SelectedShotMode
         {
             get => _selectedShotMode;
-            set => SetProperty(ref _selectedShotMode, value);
+            set
+            {
+                if (SetProperty(ref _selectedShotMode, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public ShutterModeType SelectedShutterMode
         {
             get => _selectedShutterMode;
-            set => SetProperty(ref _selectedShutterMode, value);
+            set
+            {
+                if (SetProperty(ref _selectedShutterMode, value))
+                {
+                    Task.Run(() => SendShutterConfigAsync());
+                }
+            }
         }
 
         public ShutterStateType SelectedShutterState
         {
             get => _selectedShutterState;
-            set => SetProperty(ref _selectedShutterState, value);
+            set
+            {
+                if (SetProperty(ref _selectedShutterState, value))
+                {
+                    Task.Run(() => SendShutterConfigAsync());
+                }
+            }
         }
 
         public bool SoftStartEnabled
         {
             get => _softStartEnabled;
-            set => SetProperty(ref _softStartEnabled, value);
+            set
+            {
+                if (SetProperty(ref _softStartEnabled, value))
+                {
+                    Task.Run(() => SendSoftStartConfigAsync());
+                }
+            }
         }
 
         public ushort IdleSetpoint
         {
             get => _idleSetpoint;
-            set => SetProperty(ref _idleSetpoint, value);
+            set
+            {
+                if (SetProperty(ref _idleSetpoint, value))
+                {
+                    Task.Run(() => SendSoftStartConfigAsync());
+                }
+            }
         }
 
         public uint RampCount
         {
             get => _rampCount;
-            set => SetProperty(ref _rampCount, value);
-        }
-
-        public ushort CapVoltRange
-        {
-            get => _capVoltRange;
-            set => SetProperty(ref _capVoltRange, value);
+            set
+            {
+                if (SetProperty(ref _rampCount, value))
+                {
+                    Task.Run(() => SendSoftStartConfigAsync());
+                }
+            }
         }
 
         public bool WaveformEnabled
@@ -261,7 +306,7 @@ namespace KALD_Control.ViewModels
             {
                 if (SetProperty(ref _waveformEnabled, value))
                 {
-                    _deviceManager.SendCommand(uiTxCommand.lcdRxWaveState, new byte[] { (byte)(value ? 1 : 0) });
+                    Task.Run(() => SendWaveformStateAsync());
                 }
             }
         }
@@ -269,378 +314,369 @@ namespace KALD_Control.ViewModels
         public ushort Delay1
         {
             get => _delay1;
-            set => SetProperty(ref _delay1, value);
+            set
+            {
+                if (SetProperty(ref _delay1, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
         public ushort Delay2
         {
             get => _delay2;
-            set => SetProperty(ref _delay2, value);
+            set
+            {
+                if (SetProperty(ref _delay2, value))
+                {
+                    Task.Run(() => SendPulseConfigAsync());
+                }
+            }
         }
 
-        public ICommand ConnectCommand { get; }
-        public ICommand DisconnectCommand { get; }
-        public ICommand RefreshPortsCommand { get; }
-        public ICommand ArmCommand { get; }
-        public ICommand DisarmCommand { get; }
-        public ICommand FireCommand { get; }
-        public ICommand StopCommand { get; }
-        public ICommand ApplySettingsCommand { get; }
-        public ICommand ApplyPulseSettingsCommand { get; }
-        public ICommand SendInterlockMaskCommand { get; }
-        public ICommand SendLaserDelaysCommand { get; }
-        public ICommand ApplyShutterSettingsCommand { get; }
-        public ICommand ApplySoftStartCommand { get; }
-        public ICommand ApplyCalibrationCommand { get; }
-        public ICommand RequestWaveformCommand { get; }
-        public ICommand ClearLogsCommand { get; }
-        public ICommand DebugTestCommand { get; }
+        public bool IsLogPanelExpanded
+        {
+            get => _isLogPanelExpanded;
+            set => SetProperty(ref _isLogPanelExpanded, value);
+        }
 
-        public void Connect()
+        // Constructor
+        public MainViewModel(DeviceManager deviceManager, ILoggerFactory loggerFactory, DispatcherQueue dispatcherQueue)
+        {
+            _deviceManager = deviceManager;
+            _logger = loggerFactory.CreateLogger<MainViewModel>();
+            _dispatcherQueue = dispatcherQueue;
+
+            // Wire up events
+            _deviceManager.StateUpdated += DeviceManager_StateUpdated;
+            _deviceManager.LogMessage += DeviceManager_LogMessage;
+            _deviceManager.CommandError += DeviceManager_CommandError;
+            _deviceManager.DeviceDataUpdated += DeviceManager_DeviceDataUpdated;
+            _deviceManager.InterlockStatusUpdated += DeviceManager_InterlockStatusUpdated;
+
+            // Commands with CanExecute
+            ConnectCommand = new RelayCommand(Connect, () => !IsConnected && !string.IsNullOrEmpty(SelectedPort));
+            DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
+            StopCommand = new RelayCommand(ExecuteStopAsync, () => IsConnected);
+            ArmCommand = new RelayCommand(() => SendStateAsync(LaserStateType.lsrArming), () => IsConnected && DeviceReady);
+            DisarmCommand = new RelayCommand(() => SendStateAsync(LaserStateType.lsrDisarming), () => IsConnected);
+            FireCommand = new RelayCommand(() => SendStateAsync(LaserStateType.lsrRunning), () => IsConnected && DeviceReady);
+            RefreshPortsCommand = new RelayCommand(RefreshPorts, () => !IsConnected);
+            ClearLogsCommand = new RelayCommand(ClearLogs);
+            ToggleLogPanelCommand = new RelayCommand(() => IsLogPanelExpanded = !IsLogPanelExpanded);
+            ApplySettingsCommand = new RelayCommand(() => Task.Run(() => SendVoltageAsync()), () => IsConnected);
+            ApplyPulseSettingsCommand = new RelayCommand(() => Task.Run(() => SendPulseConfigAsync()), () => IsConnected);
+            ApplyShutterSettingsCommand = new RelayCommand(() => Task.Run(() => SendShutterConfigAsync()), () => IsConnected);
+            ApplySoftStartCommand = new RelayCommand(() => Task.Run(() => SendSoftStartConfigAsync()), () => IsConnected);
+            ApplyDelaysCommand = new RelayCommand(() => Task.Run(() => SendDelaysAsync()), () => IsConnected);
+            RequestWaveformCommand = new RelayCommand(() => Task.Run(() => _deviceManager.RequestWaveformAsync()), () => IsConnected);
+            SendInterlockMaskCommand = new RelayCommand(() => Task.Run(() => SendInterlockMaskAsync()), () => IsConnected);
+            SendVoltageCommand = new RelayCommand(() => Task.Run(() => SendVoltageAsync()), () => IsConnected);
+            SendCalibrationCommand = new RelayCommand(() => Task.Run(() => SendCalibrationAsync()), () => IsConnected);
+            SendWaveformStateCommand = new RelayCommand(() => Task.Run(() => SendWaveformStateAsync()), () => IsConnected);
+            SendChargeCancelCommand = new RelayCommand(() => Task.Run(() => _deviceManager.SendChargeCancelAsync()), () => IsConnected);
+
+            RefreshPorts();
+        }
+
+        // Methods
+        public async void Connect()
         {
             try
             {
-                _deviceManager.Connect(_selectedPort, _selectedBaudRate);
+                await _deviceManager.ConnectAsync(SelectedPort, SelectedBaudRate);
+                ConnectionStatus = "Connected";
                 IsConnected = true;
+                DeviceReady = true; // Update based on actual device state
+                AppendToLog($"Connected to {SelectedPort} at {SelectedBaudRate} baud");
             }
             catch (Exception ex)
             {
-                IsConnected = false;
-                LogText += $"Connection failed: {ex.Message}\n";
                 _logger.LogError(ex, "Connection failed");
+                AppendToLog($"ERROR: Connection failed: {ex.Message}");
+                ConnectionStatus = "Disconnected";
+                IsConnected = false;
             }
         }
 
         public void Disconnect()
         {
-            _deviceManager.Disconnect();
-            IsConnected = false;
-            DeviceReady = false;
+            if (!IsConnected)
+                return;
+            try
+            {
+                _deviceManager.Disconnect();
+                ConnectionStatus = "Disconnected";
+                IsConnected = false;
+                DeviceReady = false;
+                AppendToLog("Disconnected from device");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Disconnection failed");
+                AppendToLog($"ERROR: Disconnection failed: {ex.Message}");
+            }
+        }
+
+        private async Task SendStateAsync(LaserStateType state)
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendStateCommandAsync(state);
+                AppendToLog($"Sent state: {state}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to send state {state}");
+                AppendToLog($"ERROR: Failed to send state {state}: {ex.Message}");
+            }
+        }
+
+        private void ExecuteStopAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await _deviceManager.SendStateCommandAsync(LaserStateType.lsrIdle);
+                    await _deviceManager.SendChargeCancelAsync();
+                    AppendToLog("Stop command executed");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Stop command failed");
+                    AppendToLog($"ERROR: Stop command failed: {ex.Message}");
+                }
+            });
+        }
+
+        private async Task SendPulseConfigAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendPulseConfigAsync(TotalShots, PulseWidth, (ushort)(FrequencySetpoint * 10), Delay1, Delay2, SelectedTriggerMode, SelectedShotMode);
+                AppendToLog($"Pulse config sent: Shots={TotalShots}, Width={PulseWidth}, Freq={FrequencySetpoint}, Delay1={Delay1}, Delay2={Delay2}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send pulse config");
+                AppendToLog($"ERROR: Failed to send pulse config: {ex.Message}");
+            }
+        }
+
+        private async Task SendVoltageAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendVoltageAsync(VoltageSetpoint);
+                AppendToLog($"Voltage set to {VoltageSetpoint}V");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send voltage");
+                AppendToLog($"ERROR: Failed to send voltage: {ex.Message}");
+            }
+        }
+
+        private async Task SendInterlockMaskAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                // Convert InterlockStatus to a byte bitmask
+                byte interlockMask = 0;
+                interlockMask |= (byte)(InterlockStatus.ArmOK ? 1 << 0 : 0);
+                interlockMask |= (byte)(InterlockStatus.RunOK ? 1 << 1 : 0);
+                interlockMask |= (byte)(InterlockStatus.FlowOK ? 1 << 2 : 0);
+                interlockMask |= (byte)(InterlockStatus.TempOK ? 1 << 3 : 0);
+                interlockMask |= (byte)(InterlockStatus.DoorOK ? 1 << 4 : 0);
+                interlockMask |= (byte)(InterlockStatus.CoverOK ? 1 << 5 : 0);
+                interlockMask |= (byte)(InterlockStatus.DischargeTempOK ? 1 << 6 : 0);
+                interlockMask |= (byte)(InterlockStatus.OverVoltageOK ? 1 << 7 : 0);
+
+                await _deviceManager.SendInterlockMaskAsync(interlockMask);
+                AppendToLog($"Interlock mask sent: {Convert.ToString(interlockMask, 2).PadLeft(8, '0')}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send interlock mask");
+                AppendToLog($"ERROR: Failed to send interlock mask: {ex.Message}");
+            }
+        }
+
+        private async Task SendShutterConfigAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendShutterConfigAsync(SelectedShutterMode, SelectedShutterState);
+                AppendToLog($"Shutter config sent: Mode={SelectedShutterMode}, State={SelectedShutterState}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send shutter config");
+                AppendToLog($"ERROR: Failed to send shutter config: {ex.Message}");
+            }
+        }
+
+        private async Task SendSoftStartConfigAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendSoftStartConfigAsync(SoftStartEnabled, IdleSetpoint, RampCount);
+                AppendToLog($"Soft start config sent: Enabled={SoftStartEnabled}, Idle={IdleSetpoint}, Ramp={RampCount}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send soft start config");
+                AppendToLog($"ERROR: Failed to send soft start config: {ex.Message}");
+            }
+        }
+
+        private async Task SendDelaysAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendDelaysAsync(Delay1, Delay2);
+                AppendToLog($"Delays sent: Delay1={Delay1}, Delay2={Delay2}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send delays");
+                AppendToLog($"ERROR: Failed to send delays: {ex.Message}");
+            }
+        }
+
+        private async Task SendCalibrationAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendCalibrationAsync(_capVoltRange);
+                AppendToLog($"Calibration sent with capVoltRange={_capVoltRange}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send calibration");
+                AppendToLog($"ERROR: Failed to send calibration: {ex.Message}");
+            }
+        }
+
+        private async Task SendWaveformStateAsync()
+        {
+            if (DateTime.Now - _lastCommandTime < _commandDebounce)
+                return;
+            _lastCommandTime = DateTime.Now;
+            try
+            {
+                await _deviceManager.SendWaveformStateAsync(WaveformEnabled);
+                AppendToLog($"Waveform state sent: {WaveformEnabled}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send waveform state");
+                AppendToLog($"ERROR: Failed to send waveform state: {ex.Message}");
+            }
         }
 
         private void RefreshPorts()
         {
             AvailablePorts.Clear();
             foreach (var port in SerialPort.GetPortNames())
-            {
                 AvailablePorts.Add(port);
-            }
-            if (AvailablePorts.Any() && string.IsNullOrEmpty(_selectedPort))
-            {
-                SelectedPort = AvailablePorts.First();
-            }
+            AppendToLog($"Refreshed available ports: {AvailablePorts.Count} found");
         }
 
-        private void ApplyVoltage()
+        private void ClearLogs()
         {
-            if (!CanSendCommand()) return;
-            byte[] data = BitConverter.GetBytes(_voltageSetpoint);
-            if (BitConverter.IsLittleEndian) Array.Reverse(data);
-            _deviceManager.SendCommand(uiTxCommand.lcdRxLsrVolts, data);
-            _lastCommandTime = DateTime.Now;
+            _logBuilder.Clear();
+            LogText = string.Empty;
+            AppendToLog("Logs cleared");
         }
 
-        private void ApplyPulseSettings()
-        {
-            if (!CanSendCommand()) return;
-            var config = new PulseConfig
-            {
-                Frequency = (ushort)(_frequencySetpoint * 10),
-                PulseWidth = _pulseWidth,
-                ShotTotal = _totalShots,
-                Delay1 = _delay1,
-                Delay2 = _delay2,
-                ShotMode = _selectedShotMode,
-                TrigMode = _selectedTriggerMode
-            };
-            byte[] data = new byte[14];
-            int offset = 0;
-            Array.Copy(BitConverter.GetBytes(config.Frequency), 0, data, offset, 2); offset += 2;
-            Array.Copy(BitConverter.GetBytes(config.PulseWidth), 0, data, offset, 2); offset += 2;
-            Array.Copy(BitConverter.GetBytes(config.ShotTotal), 0, data, offset, 4); offset += 4;
-            Array.Copy(BitConverter.GetBytes(config.Delay1), 0, data, offset, 2); offset += 2;
-            Array.Copy(BitConverter.GetBytes(config.Delay2), 0, data, offset, 2); offset += 2;
-            data[offset++] = (byte)config.ShotMode;
-            data[offset] = (byte)config.TrigMode;
-            if (BitConverter.IsLittleEndian) Array.Reverse(data, 0, data.Length);
-            _deviceManager.SendCommand(uiTxCommand.lcdRxLsrPulseConfig, data);
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private void SendInterlockMask()
-        {
-            if (!CanSendCommand()) return;
-            _deviceManager.SendCommand(uiTxCommand.lcdRxIntMask, new byte[] { _interlockStatus.Mask });
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private void SendLaserDelays()
-        {
-            if (!CanSendCommand()) return;
-            byte[] data = new byte[4];
-            Array.Copy(BitConverter.GetBytes(_delay1), 0, data, 0, 2);
-            Array.Copy(BitConverter.GetBytes(_delay2), 0, data, 2, 2);
-            if (BitConverter.IsLittleEndian) Array.Reverse(data);
-            _deviceManager.SendCommand(uiTxCommand.lcdRxLsrDelays, data);
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private void ApplyShutterSettings()
-        {
-            if (!CanSendCommand()) return;
-            var config = new ShutterConfig
-            {
-                ShutterMode = _selectedShutterMode,
-                ShutterState = _selectedShutterState
-            };
-            byte[] data = new byte[] { (byte)config.ShutterMode, (byte)config.ShutterState };
-            _deviceManager.SendCommand(uiTxCommand.lcdRxShutterConfig, data);
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private void ApplySoftStart()
-        {
-            if (!CanSendCommand()) return;
-            var config = new SoftStartConfig
-            {
-                Enable = _softStartEnabled,
-                IdleSetpoint = _idleSetpoint,
-                RampCount = _rampCount
-            };
-            byte[] data = new byte[7];
-            data[0] = (byte)(config.Enable ? 1 : 0);
-            Array.Copy(BitConverter.GetBytes(config.IdleSetpoint), 0, data, 1, 2);
-            Array.Copy(BitConverter.GetBytes(config.RampCount), 0, data, 3, 4);
-            if (BitConverter.IsLittleEndian) Array.Reverse(data, 1, 2);
-            if (BitConverter.IsLittleEndian) Array.Reverse(data, 3, 4);
-            _deviceManager.SendCommand(uiTxCommand.lcdRxSoftStartConfig, data);
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private void ApplyCalibration()
-        {
-            if (!CanSendCommand()) return;
-            byte[] data = BitConverter.GetBytes(_capVoltRange);
-            if (BitConverter.IsLittleEndian) Array.Reverse(data);
-            _deviceManager.SendCommand(uiTxCommand.lcdRxLsrCal, data);
-            _lastCommandTime = DateTime.Now;
-        }
-
-        private bool CanSendCommand()
-        {
-            if (DateTime.Now - _lastCommandTime < _commandDebounce)
-            {
-                _logger.LogWarning("Command debounced");
-                return false;
-            }
-            return _isConnected && _deviceReady;
-        }
-
-        private bool CanExecuteDeviceCommand() => _isConnected && _deviceReady;
-
-        private void OnStateUpdated(object sender, LaserStateType state)
+        // Helper method to safely append to log from any thread
+        private void AppendToLog(string message)
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                DeviceData.SystemState = state;
-                NotifyCommandsCanExecuteChanged();
+                _logBuilder.AppendLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+                LogText = _logBuilder.ToString();
             });
         }
 
-        private void OnPulseConfigUpdated(object sender, PulseConfig config)
+        // Event handlers
+        private void DeviceManager_StateUpdated(object sender, LaserStateType e)
+        {
+            AppendToLog($"Device state updated: {e}");
+        }
+
+        private void DeviceManager_LogMessage(object sender, string e)
+        {
+            AppendToLog($"Device: {e.Trim()}");
+        }
+
+        private void DeviceManager_CommandError(object sender, (string Command, Exception Exception) e)
+        {
+            AppendToLog($"ERROR in {e.Command}: {e.Exception.Message}");
+        }
+
+        private void DeviceManager_DeviceDataUpdated(object sender, DeviceData e)
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                FrequencySetpoint = config.Frequency / 10.0;
-                PulseWidth = config.PulseWidth;
-                TotalShots = config.ShotTotal;
-                Delay1 = config.Delay1;
-                Delay2 = config.Delay2;
-                SelectedTriggerMode = config.TrigMode;
-                SelectedShotMode = config.ShotMode;
+                DeviceData = e;
+                OnPropertyChanged(nameof(DeviceData));
             });
         }
 
-        private void OnShotCountUpdated(object sender, uint shotCount)
+        private void DeviceManager_InterlockStatusUpdated(object sender, InterlockStatus e)
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                DeviceData.ShotCount = shotCount;
-            });
-        }
-
-        private void OnRunStatusUpdated(object sender, RunStatusData status)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceData.RunStatus = status;
-                Energy = status.Energy;
-            });
-        }
-
-        private void OnIntStatusUpdated(object sender, byte status)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                _interlockStatus.UpdateFromByte(status);
+                InterlockStatus = e;
                 OnPropertyChanged(nameof(InterlockStatus));
             });
-        }
-
-        private void OnIntMaskUpdated(object sender, byte mask)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                _interlockStatus.Mask = mask;
-                OnPropertyChanged(nameof(InterlockStatus));
-            });
-        }
-
-        private void OnWaveformUpdated(object sender, WaveformData waveform)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceData.Waveform = waveform;
-            });
-        }
-
-        private void OnVoltsUpdated(object sender, ushort volts)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceData.ActualVoltage = volts;
-            });
-        }
-
-        private void OnChargeStateUpdated(object sender, ChargeStateData state)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceData.ChargeState = state;
-            });
-        }
-
-        private void OnShutterConfigUpdated(object sender, ShutterConfig config)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                SelectedShutterMode = config.ShutterMode;
-                SelectedShutterState = config.ShutterState;
-            });
-        }
-
-        private void OnSoftStartConfigUpdated(object sender, SoftStartConfig config)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                SoftStartEnabled = config.Enable;
-                IdleSetpoint = config.IdleSetpoint;
-                RampCount = config.RampCount;
-            });
-        }
-
-        private void OnCalibrationUpdated(object sender, CalibrationData calibration)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceData.Calibration = calibration;
-                CapVoltRange = calibration.CapVoltRange;
-            });
-        }
-
-        private void OnLogMessage(object sender, string message)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                _logText.Append(message);
-                OnPropertyChanged(nameof(LogText));
-            });
-        }
-
-        private void OnCommandError(object sender, (string Command, Exception Exception) e)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                _logText.AppendLine($"Error in {e.Command}: {e.Exception.Message}");
-                OnPropertyChanged(nameof(LogText));
-            });
-        }
-
-        private void OnDiscoveryResponseReceived(object sender, bool success)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceReady = success;
-                ConnectionStatus = success ? "Connected" : (_isConnected ? "Discovery Failed" : "Disconnected");
-                NotifyCommandsCanExecuteChanged();
-            });
-        }
-
-        private void NotifyCommandsCanExecuteChanged()
-        {
-            ((RelayCommand)ConnectCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)DisconnectCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)RefreshPortsCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ArmCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)DisarmCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)FireCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)StopCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ApplySettingsCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ApplyPulseSettingsCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)SendInterlockMaskCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)SendLaserDelaysCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ApplyShutterSettingsCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ApplySoftStartCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ApplyCalibrationCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)RequestWaveformCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ClearLogsCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)DebugTestCommand)?.RaiseCanExecuteChanged();
-            ((RelayCommand)ToggleLogPanelCommand)?.RaiseCanExecuteChanged();
         }
 
         public void Dispose()
         {
-            if (_disposed) return;
-            _disposed = true;
-
-            _deviceManager.StateUpdated -= OnStateUpdated;
-            _deviceManager.PulseConfigUpdated -= OnPulseConfigUpdated;
-            _deviceManager.ShotCountUpdated -= OnShotCountUpdated;
-            _deviceManager.RunStatusUpdated -= OnRunStatusUpdated;
-            _deviceManager.IntStatusUpdated -= OnIntStatusUpdated;
-            _deviceManager.IntMaskUpdated -= OnIntMaskUpdated;
-            _deviceManager.WaveformUpdated -= OnWaveformUpdated;
-            _deviceManager.VoltsUpdated -= OnVoltsUpdated;
-            _deviceManager.ChargeStateUpdated -= OnChargeStateUpdated;
-            _deviceManager.ShutterConfigUpdated -= OnShutterConfigUpdated;
-            _deviceManager.SoftStartConfigUpdated -= OnSoftStartConfigUpdated;
-            _deviceManager.CalibrationUpdated -= OnCalibrationUpdated;
-            _deviceManager.LogMessage -= OnLogMessage;
-            _deviceManager.CommandError -= OnCommandError;
-            _deviceManager.DiscoveryResponseReceived -= OnDiscoveryResponseReceived;
-
-            if (_deviceManager.IsConnected)
+            if (!_disposed)
             {
-                _deviceManager.Disconnect();
+                _deviceManager.StateUpdated -= DeviceManager_StateUpdated;
+                _deviceManager.LogMessage -= DeviceManager_LogMessage;
+                _deviceManager.CommandError -= DeviceManager_CommandError;
+                _deviceManager.DeviceDataUpdated -= DeviceManager_DeviceDataUpdated;
+                _deviceManager.InterlockStatusUpdated -= DeviceManager_InterlockStatusUpdated;
+
+                _deviceManager?.Dispose();
+                _disposed = true;
+                AppendToLog("MainViewModel disposed");
             }
-        }
-    }
-
-    public class ObservableObject : INotifyPropertyChanged
-    {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
         }
     }
 
