@@ -23,7 +23,6 @@ namespace KALD_Control.ViewModels
         private bool _disposed = false;
         private string _connectionStatus = "Disconnected";
         private bool _isConnected = false;
-        private bool _deviceReady = false;
         private string _selectedPort;
         private int _selectedBaudRate = Constants.DefaultBaudRate;
         private ushort _voltageSetpoint = 0;
@@ -41,6 +40,8 @@ namespace KALD_Control.ViewModels
         private ShotModeType _selectedShotMode = ShotModeType.burstMode;
         private ShutterModeType _selectedShutterMode = ShutterModeType.autoMode;
         private ShutterStateType _selectedShutterState = ShutterStateType.shutterClosed;
+        private ushort _setDelay1 = 0;
+        private ushort _setDelay2 = 0;
         private bool _softStartEnabled = false;
         private ushort _idleSetpoint = 100;
         private uint _rampCount = 10;
@@ -101,6 +102,18 @@ namespace KALD_Control.ViewModels
             set => SetProperty(ref _selectedShutterState, value);
         }
 
+        public ushort SetDelay1
+        {
+            get => _setDelay1;
+            set => SetProperty(ref _setDelay1, value);
+        }
+
+        public ushort SetDelay2
+        {
+            get => _setDelay2;
+            set => SetProperty(ref _setDelay2, value);
+        }
+
         public bool SoftStartEnabled
         {
             get => _softStartEnabled;
@@ -129,12 +142,6 @@ namespace KALD_Control.ViewModels
         {
             get => _isConnected;
             set => SetProperty(ref _isConnected, value);
-        }
-
-        public bool DeviceReady
-        {
-            get => _deviceReady;
-            set => SetProperty(ref _deviceReady, value);
         }
 
         public string SelectedPort
@@ -215,24 +222,24 @@ namespace KALD_Control.ViewModels
             ConnectCommand = new RelayCommand(ExecuteConnect, () => !IsConnected && !string.IsNullOrEmpty(SelectedPort));
             DisconnectCommand = new RelayCommand(ExecuteDisconnect, () => IsConnected);
             RefreshPortsCommand = new RelayCommand(ExecuteRefreshPorts);
-            ApplyPulseSettingsCommand = new RelayCommand(ExecuteApplyPulseSettings, () => DeviceReady && CanSendCommand());
-            SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => DeviceReady && CanSendCommand());
-            SendLaserDelaysCommand = new RelayCommand(ExecuteSendLaserDelays, () => DeviceReady && CanSendCommand());
-            ApplyShutterSettingsCommand = new RelayCommand(ExecuteApplyShutterSettings, () => DeviceReady && CanSendCommand());
-            ApplySoftStartCommand = new RelayCommand(ExecuteApplySoftStart, () => DeviceReady && CanSendCommand());
-            RequestStatusCommand = new RelayCommand(ExecuteRequestStatus, () => DeviceReady && CanSendCommand());
-            ReadEnergyCommand = new RelayCommand(ExecuteReadEnergy, () => DeviceReady && CanSendCommand());
-            ReadTemperatureCommand = new RelayCommand(ExecuteReadTemperature, () => DeviceReady && CanSendCommand());
-            SystemInfoCommand = new RelayCommand(ExecuteSystemInfo, () => DeviceReady && CanSendCommand());
-            SystemResetCommand = new RelayCommand(ExecuteSystemReset, () => DeviceReady && CanSendCommand());
-            RequestWaveformCommand = new RelayCommand(ExecuteRequestWaveform, () => DeviceReady && CanSendCommand());
+            ApplyPulseSettingsCommand = new RelayCommand(ExecuteApplyPulseSettings, () => CanSendCommand());
+            SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => CanSendCommand());
+            SendLaserDelaysCommand = new RelayCommand(ExecuteSendLaserDelays, () => CanSendCommand());
+            ApplyShutterSettingsCommand = new RelayCommand(ExecuteApplyShutterSettings, () => CanSendCommand());
+            ApplySoftStartCommand = new RelayCommand(ExecuteApplySoftStart, () => CanSendCommand());
+            RequestStatusCommand = new RelayCommand(ExecuteRequestStatus, () => CanSendCommand());
+            ReadEnergyCommand = new RelayCommand(ExecuteReadEnergy, () => CanSendCommand());
+            ReadTemperatureCommand = new RelayCommand(ExecuteReadTemperature, () => CanSendCommand());
+            SystemInfoCommand = new RelayCommand(ExecuteSystemInfo, () => CanSendCommand());
+            SystemResetCommand = new RelayCommand(ExecuteSystemReset, () => CanSendCommand());
+            RequestWaveformCommand = new RelayCommand(ExecuteRequestWaveform, () => CanSendCommand());
             ClearLogsCommand = new RelayCommand(ExecuteClearLogs);
-            DebugTestCommand = new RelayCommand(ExecuteDebugTest, () => DeviceReady && CanSendCommand());
-            StopCommand = new RelayCommand(ExecuteStop, () => DeviceReady && CanSendCommand());
-            ArmCommand = new RelayCommand(ExecuteArm, () => DeviceReady && CanSendCommand());
-            DisarmCommand = new RelayCommand(ExecuteDisarm, () => DeviceReady && CanSendCommand());
-            FireCommand = new RelayCommand(ExecuteFire, () => DeviceReady && CanSendCommand());
-            ApplySettingsCommand = new RelayCommand(ExecuteApplySettings, () => DeviceReady && CanSendCommand());
+            DebugTestCommand = new RelayCommand(ExecuteDebugTest, () => CanSendCommand());
+            StopCommand = new RelayCommand(ExecuteStop, () => CanSendCommand());
+            ArmCommand = new RelayCommand(ExecuteArm, () => CanSendCommand());
+            DisarmCommand = new RelayCommand(ExecuteDisarm, () => CanSendCommand());
+            FireCommand = new RelayCommand(ExecuteFire, () => CanSendCommand());
+            ApplySettingsCommand = new RelayCommand(ExecuteApplySettings, () => CanSendCommand());
 
             _deviceManager.StateUpdated += OnStateUpdated;
             _deviceManager.RunStatusUpdated += OnRunStatusUpdated;
@@ -247,7 +254,6 @@ namespace KALD_Control.ViewModels
             _deviceManager.DigitalIOUpdated += OnDigitalIOUpdated;
             _deviceManager.PulseConfigUpdated += OnPulseConfigUpdated;
             _deviceManager.CommandError += OnCommandError;
-            _deviceManager.DiscoveryResponseReceived += OnDiscoveryResponseReceived;
             _deviceManager.ShotCountUpdated += OnShotCountUpdated;
             _deviceManager.DeviceDataUpdated += OnDeviceDataUpdated;
 
@@ -258,7 +264,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendStateCommand(LaserStateType.lsrArming);
+            _deviceManager.SendLsrState(LaserStateType.lsrArming);
             _logger.LogInformation("Sent arm command");
         }
 
@@ -266,7 +272,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendStateCommand(LaserStateType.lsrDisarming);
+            _deviceManager.SendLsrState(LaserStateType.lsrDisarming);
             _logger.LogInformation("Sent disarm command");
         }
 
@@ -274,7 +280,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendStateCommand(LaserStateType.lsrRunning);
+            _deviceManager.SendLsrState(LaserStateType.lsrRunning);
             _logger.LogInformation("Sent fire command");
         }
 
@@ -282,7 +288,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendVoltage(VoltageSetpoint);
+            _deviceManager.SendLsrVolts(VoltageSetpoint);
             _logger.LogInformation($"Applied voltage setting: {VoltageSetpoint}V");
         }
 
@@ -312,7 +318,6 @@ namespace KALD_Control.ViewModels
         {
             _deviceManager.Disconnect();
             IsConnected = false;
-            DeviceReady = false;
             ConnectionStatus = "Disconnected";
             _logger.LogInformation("Disconnected from device");
             UpdateCommandStates();
@@ -346,10 +351,12 @@ namespace KALD_Control.ViewModels
                 PulseWidth = PulseWidth,
                 ShotTotal = TotalShots,
                 ShotMode = SelectedShotMode,
-                TrigMode = SelectedTriggerMode
+                TrigMode = SelectedTriggerMode,
+                Delay1 = SetDelay1,
+                Delay2 = SetDelay2
             };
 
-            _deviceManager.SendPulseConfig(pulseConfig);
+            _deviceManager.SendLsrPulseConfig(pulseConfig);
             _logger.LogInformation("Sent pulse configuration");
         }
 
@@ -357,7 +364,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendInterlockMask(DigitalIO.GetInterlockMaskForLCD());
+            _deviceManager.SendIntMask(DigitalIO.GetInterlockMaskForLCD());
             _logger.LogInformation($"Sent interlock mask: 0x{DigitalIO.GetInterlockMaskForLCD():X2}");
         }
 
@@ -365,8 +372,9 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            var pulseConfig = DeviceData.PulseConfig ?? new PulseConfig();
-            _deviceManager.SendLaserDelays(pulseConfig.Delay1, pulseConfig.Delay2);
+            ushort Delay1 = SetDelay1;
+            ushort Delay2 = SetDelay2;
+            _deviceManager.SendLsrDelays(Delay1, Delay2);
             _logger.LogInformation("Sent laser delays");
         }
 
@@ -405,7 +413,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendStateCommand(LaserStateType.lsrIdle);
+            _deviceManager.SendLsrState(LaserStateType.lsrIdle);
             _logger.LogInformation("Requested laser status");
         }
 
@@ -441,7 +449,7 @@ namespace KALD_Control.ViewModels
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
             // Placeholder: Adjust to actual command if available
-            _deviceManager.SendChargeCancel();
+            _deviceManager.SendLsrChargeCancel();
             _logger.LogInformation("Sent system reset command");
         }
 
@@ -449,7 +457,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendWaveformState(WaveformEnabled);
+            _deviceManager.SendWaveState(WaveformEnabled);
             _logger.LogInformation("Requested waveform data");
         }
 
@@ -474,7 +482,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendChargeCancel();
+            _deviceManager.SendLsrChargeCancel();
             _logger.LogInformation("Sent stop command");
         }
 
@@ -596,17 +604,6 @@ namespace KALD_Control.ViewModels
             });
         }
 
-        private void OnDiscoveryResponseReceived(object sender, bool success)
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DeviceReady = success;
-                ConnectionStatus = success ? "Device Ready" : "Device Not Responding";
-                _logger.LogInformation($"Discovery response: {success}");
-                UpdateCommandStates();
-            });
-        }
-
         private void OnShotCountUpdated(object sender, uint shotCount)
         {
             _dispatcherQueue.TryEnqueue(() =>
@@ -676,7 +673,6 @@ namespace KALD_Control.ViewModels
             _deviceManager.DigitalIOUpdated -= OnDigitalIOUpdated;
             _deviceManager.PulseConfigUpdated -= OnPulseConfigUpdated;
             _deviceManager.CommandError -= OnCommandError;
-            _deviceManager.DiscoveryResponseReceived -= OnDiscoveryResponseReceived;
             _deviceManager.ShotCountUpdated -= OnShotCountUpdated;
             _deviceManager.DeviceDataUpdated -= OnDeviceDataUpdated;
 

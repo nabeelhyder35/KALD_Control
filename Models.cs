@@ -521,12 +521,12 @@ namespace KALD_Control.Models
             }
 
             // Calculate checksum (0 - sum of command and data bytes)
-            byte sum = command;
+            byte checksum = command;
             for (int i = 0; i < dataLength; i++)
             {
-                sum += data[i];
+                checksum += data[i];
             }
-            packet[index++] = (byte)((0 - sum) & 0xFF);
+            packet[index++] = (byte)((0 - checksum) & 0xFF);
 
             // ETX
             packet[index] = ProtocolConstants.ETX;

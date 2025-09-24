@@ -364,12 +364,12 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Laser Delays" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Delay 1 (μs)"
-                                           Value="{Binding DeviceData.PulseConfig.Delay1, Mode=TwoWay}"
+                                           Value="{Binding SetDelay1, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Delay 2 (μs)"
-                                           Value="{Binding DeviceData.PulseConfig.Delay2, Mode=TwoWay}"
+                                           Value="{Binding SetDelay2, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
