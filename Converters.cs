@@ -255,6 +255,23 @@ namespace KALD_Control.Converters
         }
     }
 
+    public class BoolToOkFaultConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is bool boolValue)
+            {
+                return boolValue ? "OK" : "FAULT";
+            }
+            return "UNKNOWN";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     /// <summary>
     /// Converts a boolean value to the inverse visibility.
     /// </summary>

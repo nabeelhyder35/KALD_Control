@@ -433,25 +433,28 @@ namespace KALD_Control.Services
         }
         private void HandleLsrIntStatus(byte[] data)
         {
-            var digitalIO = new DigitalIOState();
-            digitalIO.InputStates = data[0];
-            var status = digitalIO.GetInterlockStatusForLCD();
-            SafeInvoke(() =>
-            {
-                IntStatusUpdated?.Invoke(this, status);
-                DigitalIOUpdated?.Invoke(this, digitalIO);
-            });
+            byte status = data[0];
+            //var digitalIO = new DigitalIOState();
+            //digitalIO.InputStates = data[0];
+            //var status = digitalIO.GetInterlockStatusForLCD();
+            //SafeInvoke(() =>
+            //{
+            //    IntStatusUpdated?.Invoke(this, status);
+            //    DigitalIOUpdated?.Invoke(this, digitalIO);
+            //});
             Log($"Interlock status: 0x{data[0]:X2}");
         }
         private void HandleLsrIntMask(byte[] data)
         {
-            var digitalIO = new DigitalIOState();
-            digitalIO.SetInterlockMaskFromLCD(data[0]);
-            SafeInvoke(() =>
-            {
-                IntMaskUpdated?.Invoke(this, data[0]);
-                DigitalIOUpdated?.Invoke(this, digitalIO);
-            });
+            byte mask = data[0];
+            
+            //var digitalIO = new DigitalIOState();
+            //digitalIO.SetInterlockMaskFromLCD(data[0]);
+            //SafeInvoke(() =>
+            //{
+            //    IntMaskUpdated?.Invoke(this, data[0]);
+            //    DigitalIOUpdated?.Invoke(this, digitalIO);
+            //});
             Log($"Interlock mask: 0x{data[0]:X2}");
         }
         private void HandleLsrWaveform(byte[] data)

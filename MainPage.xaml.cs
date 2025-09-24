@@ -41,23 +41,6 @@ namespace KALD_Control
             }
         }
 
-        // Helper method for interlock status binding in XAML
-        public bool GetInterlockStatus(string interlockName)
-        {
-            return interlockName switch
-            {
-                "Power OK" => ViewModel.InterlockStatus.PowerOK,
-                "Temperature OK" => ViewModel.InterlockStatus.TempOK,
-                "Door OK" => ViewModel.InterlockStatus.DoorOK,
-                "Water OK" => ViewModel.InterlockStatus.WaterOK,
-                "Cover OK" => ViewModel.InterlockStatus.CoverOK,
-                "Discharge Temp OK" => ViewModel.InterlockStatus.DischargeTempOK,
-                "Over Voltage OK" => ViewModel.InterlockStatus.OverVoltageOK,
-                "Over Temp OK" => ViewModel.InterlockStatus.OverTempOK,
-                _ => false
-            };
-        }
-
         // Helper method to convert WaveformData to a string for display
         public string GetWaveformDataString()
         {
@@ -74,52 +57,10 @@ namespace KALD_Control
             // Take first 20 bytes (equivalent to 10 ushorts) for display
             return BitConverter.ToString(bytes.Take(20).ToArray()).Replace("-", " ") + (bytes.Length > 20 ? " ..." : "");
         }
-    }
 
-    public class InterlockStatusConverter : Microsoft.UI.Xaml.Data.IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, string language)
+        private void ToggleSwitch_Toggled(object sender, RoutedEventArgs e)
         {
-            if (value is InterlockStatus interlockStatus && parameter is string interlockName)
-            {
-                return interlockName switch
-                {
-                    "PowerOK" => interlockStatus.PowerOK,
-                    "TempOK" => interlockStatus.TempOK,
-                    "DoorOK" => interlockStatus.DoorOK,
-                    "WaterOK" => interlockStatus.WaterOK,
-                    "CoverOK" => interlockStatus.CoverOK,
-                    "DischargeTempOK" => interlockStatus.DischargeTempOK,
-                    "OverVoltageOK" => interlockStatus.OverVoltageOK,
-                    "OverTempOK" => interlockStatus.OverTempOK,
-                    _ => false
-                };
-            }
-            return false;
-        }
 
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class BoolToColorConverter : Microsoft.UI.Xaml.Data.IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            if (value is bool isOk)
-            {
-                return isOk
-                    ? Application.Current.Resources["SystemFillColorSuccessBrush"] as SolidColorBrush ?? new SolidColorBrush(Colors.Green)
-                    : Application.Current.Resources["SystemFillColorCriticalBrush"] as SolidColorBrush ?? new SolidColorBrush(Colors.Red);
-            }
-            return new SolidColorBrush(Colors.Gray);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
         }
     }
 

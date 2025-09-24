@@ -27,11 +27,11 @@ namespace KALD_Control.ViewModels
         private int _selectedBaudRate = Constants.DefaultBaudRate;
         private ushort _voltageSetpoint = 0;
         private StringBuilder _logText = new StringBuilder();
-        private InterlockStatus _interlockStatus = new InterlockStatus();
-        private DigitalIOState _digitalIO = new DigitalIOState();
         private bool _waveformEnabled = false;
         private DateTime _lastCommandTime = DateTime.MinValue;
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
+        
+        public Interlocks _interlocks = new Interlocks();
 
         private ushort _frequencySetpoint = 100;
         private ushort _pulseWidth = 100;
@@ -171,18 +171,6 @@ namespace KALD_Control.ViewModels
                 _logText.Append(value);
                 OnPropertyChanged(nameof(LogText));
             }
-        }
-
-        public InterlockStatus InterlockStatus
-        {
-            get => _interlockStatus;
-            set => SetProperty(ref _interlockStatus, value);
-        }
-
-        public DigitalIOState DigitalIO
-        {
-            get => _digitalIO;
-            set => SetProperty(ref _digitalIO, value);
         }
 
         public bool WaveformEnabled
@@ -364,8 +352,8 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendIntMask(DigitalIO.GetInterlockMaskForLCD());
-            _logger.LogInformation($"Sent interlock mask: 0x{DigitalIO.GetInterlockMaskForLCD():X2}");
+            //_deviceManager.SendIntMask(DigitalIO.GetInterlockMaskForLCD());
+            //_logger.LogInformation($"Sent interlock mask: 0x{DigitalIO.GetInterlockMaskForLCD():X2}");
         }
 
         private void ExecuteSendLaserDelays()
@@ -515,11 +503,11 @@ namespace KALD_Control.ViewModels
 
         private void OnIntStatusUpdated(object sender, byte status)
         {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                InterlockStatus.UpdateFromByte(status);
-                _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
-            });
+            //_dispatcherQueue.TryEnqueue(() =>
+            //{
+            //    InterlockStatus.UpdateFromByte(status);
+            //    _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
+            //});
         }
 
         private void OnVoltsUpdated(object sender, ushort volts)
@@ -578,11 +566,11 @@ namespace KALD_Control.ViewModels
 
         private void OnDigitalIOUpdated(object sender, DigitalIOState digitalIO)
         {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                DigitalIO = digitalIO;
-                _logger.LogInformation($"Digital I/O updated: InputStates=0x{digitalIO.InputStates:X8}, OutputStates=0x{digitalIO.OutputStates:X8}");
-            });
+            //_dispatcherQueue.TryEnqueue(() =>
+            //{
+            //    DigitalIO = digitalIO;
+            //    _logger.LogInformation($"Digital I/O updated: InputStates=0x{digitalIO.InputStates:X8}, OutputStates=0x{digitalIO.OutputStates:X8}");
+            //});
         }
 
         private void OnPulseConfigUpdated(object sender, PulseConfig pulseConfig)

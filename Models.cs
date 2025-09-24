@@ -34,31 +34,17 @@ namespace KALD_Control.Models
     /// Each bit in the status/mask byte represents a specific interlock condition.
     /// A bit value of 0 indicates the condition is OK, while 1 indicates a fault.
     /// </summary>
-    public class InterlockStatus : ObservableObject
+    public class Interlocks : ObservableObject
     {
-        private byte _status;
-        private byte _mask = 0x3F; // Default mask: bits 0-5 enabled, 6-7 reserved
+        private byte _status = 0x3F;
+        private byte _mask = 0x0F; // Default mask: All 4 masks enabled
 
-        /// <summary>
-        /// Gets or sets the interlock status byte. Updates all related properties when changed.
-        /// </summary>
         public byte Status
         {
             get => _status;
             set
             {
-                if (SetProperty(ref _status, value))
-                {
-                    OnPropertyChanged(nameof(PowerOK));
-                    OnPropertyChanged(nameof(TempOK));
-                    OnPropertyChanged(nameof(DoorOK));
-                    OnPropertyChanged(nameof(WaterOK));
-                    OnPropertyChanged(nameof(CoverOK));
-                    OnPropertyChanged(nameof(DischargeTempOK));
-                    OnPropertyChanged(nameof(OverVoltageOK));
-                    OnPropertyChanged(nameof(OverTempOK));
-                    OnPropertyChanged(nameof(AllOK));
-                }
+                _status = (byte)(value & 0x7f);
             }
         }
 
@@ -72,74 +58,37 @@ namespace KALD_Control.Models
             {
                 if (SetProperty(ref _mask, value))
                 {
-                    OnPropertyChanged(nameof(PowerMasked));
-                    OnPropertyChanged(nameof(TempMasked));
-                    OnPropertyChanged(nameof(DoorMasked));
-                    OnPropertyChanged(nameof(WaterMasked));
-                    OnPropertyChanged(nameof(CoverMasked));
-                    OnPropertyChanged(nameof(DischargeTempMasked));
-                    OnPropertyChanged(nameof(OverVoltageMasked));
-                    OnPropertyChanged(nameof(OverTempMasked));
-                    OnPropertyChanged(nameof(AllMasked));
+                    OnPropertyChanged(nameof(coolantFlowEnabled));
+                    OnPropertyChanged(nameof(coolantTempEnabled));
+                    OnPropertyChanged(nameof(DoorEnabled));
+                    OnPropertyChanged(nameof(CoverEnabled));
                 }
             }
         }
 
         // Status properties: true if the interlock condition is OK (bit is 0), false if faulted (bit is 1)
-        public bool PowerOK => (_status & 0x01) == 0;
-        public bool TempOK => (_status & 0x02) == 0;
-        public bool DoorOK => (_status & 0x04) == 0;
-        public bool WaterOK => (_status & 0x08) == 0;
-        public bool CoverOK => (_status & 0x10) == 0;
-        public bool DischargeTempOK => (_status & 0x20) == 0;
-        public bool OverVoltageOK => (_status & 0x40) == 0; // Reserved, may be used in UI
-        public bool OverTempOK => (_status & 0x80) == 0;   // Reserved, may be used in UI
+        public bool coolantFlowStatus => (_status & 0x01) == 0;
+        public bool coolantTempStatus => (_status & 0x02) == 0;
+        public bool DoorStatus => (_status & 0x04) == 0;
+        public bool CoverStatus => (_status & 0x08) == 0;
+        public bool DumpTempStatus => (_status & 0x10) == 0;
+        public bool ChargerOverVoltageStatus => (_status & 0x20) == 0;
+        public bool ChargerOverTempStatus => (_status & 0x40) == 0;
 
         /// <summary>
         /// Gets a value indicating whether all enabled interlock conditions are OK.
         /// </summary>
-        public bool AllOK => (PowerOK || !PowerMasked) &&
-                             (TempOK || !TempMasked) &&
-                             (DoorOK || !DoorMasked) &&
-                             (WaterOK || !WaterMasked) &&
-                             (CoverOK || !CoverMasked) &&
-                             (DischargeTempOK || !DischargeTempMasked) &&
-                             (OverVoltageOK || !OverVoltageMasked) &&
-                             (OverTempOK || !OverTempMasked);
+        public bool AllOK => (coolantFlowStatus || !coolantFlowEnabled) &&
+                             (coolantTempStatus || !coolantTempEnabled) &&
+                             (DoorStatus || !DoorEnabled) &&
+                             (CoverStatus || !CoverEnabled) &&
+                             (DumpTempStatus) && (ChargerOverVoltageStatus) && (ChargerOverTempStatus);
 
         // Mask properties: true if the interlock condition is enabled (bit is 1), false if disabled (bit is 0)
-        public bool PowerMasked => (_mask & 0x01) != 0;
-        public bool TempMasked => (_mask & 0x02) != 0;
-        public bool DoorMasked => (_mask & 0x04) != 0;
-        public bool WaterMasked => (_mask & 0x08) != 0;
-        public bool CoverMasked => (_mask & 0x10) != 0;
-        public bool DischargeTempMasked => (_mask & 0x20) != 0;
-        public bool OverVoltageMasked => (_mask & 0x40) != 0; // Reserved, may be used in UI
-        public bool OverTempMasked => (_mask & 0x80) != 0;   // Reserved, may be used in UI
-
-        /// <summary>
-        /// Gets a value indicating whether all interlock conditions are enabled.
-        /// </summary>
-        public bool AllMasked => PowerMasked && TempMasked && DoorMasked && WaterMasked &&
-                                 CoverMasked && DischargeTempMasked && OverVoltageMasked && OverTempMasked;
-
-        /// <summary>
-        /// Updates the interlock status from a received byte.
-        /// </summary>
-        /// <param name="newStatus">The new status byte received from the device.</param>
-        public void UpdateFromByte(byte newStatus)
-        {
-            Status = (byte)(newStatus & 0x3F); // Mask to 6 bits for NIOS compatibility
-        }
-
-        /// <summary>
-        /// Returns the interlock status as a byte for transmission.
-        /// </summary>
-        /// <returns>The status byte.</returns>
-        public byte ToByte()
-        {
-            return (byte)(_status & 0x3F); // Mask to 6 bits for NIOS compatibility
-        }
+        public bool coolantFlowEnabled => (_mask & 0x01) != 0;
+        public bool coolantTempEnabled => (_mask & 0x02) != 0;
+        public bool DoorEnabled => (_mask & 0x04) != 0;
+        public bool CoverEnabled => (_mask & 0x10) != 0;
 
         /// <summary>
         /// Updates the interlock mask from a received byte.
@@ -148,6 +97,10 @@ namespace KALD_Control.Models
         public void UpdateMask(byte newMask)
         {
             Mask = newMask; // Allow 8 bits for UI, NIOS uses 6 bits
+        }
+        public void UpdateStatus(byte newStatus)
+        {
+            Status = newStatus; // Allow 8 bits for UI, NIOS uses 6 bits
         }
     }
 
@@ -1042,34 +995,6 @@ namespace KALD_Control.Models
     /// </summary>
     public class DigitalIOState : ObservableObject
     {
-        private uint _inputStates;
-        public uint InputStates
-        {
-            get => _inputStates;
-            set
-            {
-                if (SetProperty(ref _inputStates, value))
-                {
-                    UpdateInterlockStatus();
-                    OnPropertyChanged(nameof(InterlockStatus));
-                    OnPropertyChanged(nameof(Input0));
-                    OnPropertyChanged(nameof(Input1));
-                    OnPropertyChanged(nameof(Input2));
-                    OnPropertyChanged(nameof(Input3));
-                    OnPropertyChanged(nameof(Input4));
-                    OnPropertyChanged(nameof(Input5));
-                    OnPropertyChanged(nameof(Input6));
-                    OnPropertyChanged(nameof(Input7));
-                    OnPropertyChanged(nameof(PowerInterlockOK));
-                    OnPropertyChanged(nameof(TempInterlockOK));
-                    OnPropertyChanged(nameof(DoorInterlockOK));
-                    OnPropertyChanged(nameof(WaterInterlockOK));
-                    OnPropertyChanged(nameof(CoverInterlockOK));
-                    OnPropertyChanged(nameof(DischargeInterlockOK));
-                }
-            }
-        }
-
         private uint _outputStates;
         public uint OutputStates
         {
@@ -1078,14 +1003,14 @@ namespace KALD_Control.Models
             {
                 if (SetProperty(ref _outputStates, value))
                 {
-                    OnPropertyChanged(nameof(Output0));
-                    OnPropertyChanged(nameof(Output1));
-                    OnPropertyChanged(nameof(Output2));
-                    OnPropertyChanged(nameof(Output3));
-                    OnPropertyChanged(nameof(Output4));
-                    OnPropertyChanged(nameof(Output5));
-                    OnPropertyChanged(nameof(Output6));
-                    OnPropertyChanged(nameof(Output7));
+                    //OnPropertyChanged(nameof(Output0));
+                    //OnPropertyChanged(nameof(Output1));
+                    //OnPropertyChanged(nameof(Output2));
+                    //OnPropertyChanged(nameof(Output3));
+                    //OnPropertyChanged(nameof(Output4));
+                    //OnPropertyChanged(nameof(Output5));
+                    //OnPropertyChanged(nameof(Output6));
+                    //OnPropertyChanged(nameof(Output7));
                     OnPropertyChanged(nameof(ShutterOpen));
                     OnPropertyChanged(nameof(CoolerOn));
                     OnPropertyChanged(nameof(HVEnabled));
@@ -1101,68 +1026,6 @@ namespace KALD_Control.Models
             get => _timestamp;
             set => SetProperty(ref _timestamp, value);
         }
-
-        private byte _interlockMask = 0x3F; // Bits 0–5 (matching InterlockStatus.cs)
-        public byte InterlockMask
-        {
-            get => _interlockMask;
-            set
-            {
-                if (SetProperty(ref _interlockMask, value))
-                {
-                    UpdateInterlockStatus();
-                    OnPropertyChanged(nameof(InterlockStatus));
-                    OnPropertyChanged(nameof(PowerInterlockOK));
-                    OnPropertyChanged(nameof(TempInterlockOK));
-                    OnPropertyChanged(nameof(DoorInterlockOK));
-                    OnPropertyChanged(nameof(WaterInterlockOK));
-                    OnPropertyChanged(nameof(CoverInterlockOK));
-                    OnPropertyChanged(nameof(DischargeInterlockOK));
-                }
-            }
-        }
-
-        private byte _interlockStatus;
-        public byte InterlockStatus
-        {
-            get => _interlockStatus;
-            private set => SetProperty(ref _interlockStatus, value);
-        }
-
-        private bool _interlockGood = true;
-        public bool InterlockGood
-        {
-            get => _interlockGood;
-            private set => SetProperty(ref _interlockGood, value);
-        }
-
-        // Individual input states
-        public bool Input0 => (_inputStates & 0x01) != 0;
-        public bool Input1 => (_inputStates & 0x02) != 0;
-        public bool Input2 => (_inputStates & 0x04) != 0;
-        public bool Input3 => (_inputStates & 0x08) != 0;
-        public bool Input4 => (_inputStates & 0x10) != 0;
-        public bool Input5 => (_inputStates & 0x20) != 0;
-        public bool Input6 => (_inputStates & 0x40) != 0;
-        public bool Input7 => (_inputStates & 0x80) != 0;
-
-        // Individual output states
-        public bool Output0 => (_outputStates & 0x01) != 0;
-        public bool Output1 => (_outputStates & 0x02) != 0;
-        public bool Output2 => (_outputStates & 0x04) != 0;
-        public bool Output3 => (_outputStates & 0x08) != 0;
-        public bool Output4 => (_outputStates & 0x10) != 0;
-        public bool Output5 => (_outputStates & 0x20) != 0;
-        public bool Output6 => (_outputStates & 0x40) != 0;
-        public bool Output7 => (_outputStates & 0x80) != 0;
-
-        // Interlock properties (bits 2–7, matching InterlockStatus.cs)
-        public bool PowerInterlockOK => ((_inputStates & 0x04) == 0) || ((_interlockMask & 0x01) == 0);
-        public bool TempInterlockOK => ((_inputStates & 0x08) == 0) || ((_interlockMask & 0x02) == 0);
-        public bool DoorInterlockOK => ((_inputStates & 0x10) == 0) || ((_interlockMask & 0x04) == 0);
-        public bool WaterInterlockOK => ((_inputStates & 0x20) == 0) || ((_interlockMask & 0x08) == 0);
-        public bool CoverInterlockOK => ((_inputStates & 0x40) == 0) || ((_interlockMask & 0x10) == 0);
-        public bool DischargeInterlockOK => ((_inputStates & 0x80) == 0) || ((_interlockMask & 0x20) == 0);
 
         // Output controls
         public bool ShutterOpen
@@ -1223,52 +1086,6 @@ namespace KALD_Control.Models
                 else
                     OutputStates &= ~0x10u;
             }
-        }
-
-        private void UpdateInterlockStatus()
-        {
-            // Map input bits 2–7 to interlock status bits 0–5 (consistent with FPGA)
-            byte inputBits = (byte)((_inputStates >> 2) & 0x3F);
-
-            // Interlocks are active low; invert and mask with 0x3F (6 bits for NIOS compatibility)
-            InterlockStatus = (byte)((~inputBits) & _interlockMask & 0x3F);
-
-            // Check if all enabled interlocks are satisfied
-            InterlockGood = (InterlockStatus & _interlockMask) == _interlockMask;
-            Timestamp = DateTime.Now;
-        }
-
-        /// <summary>
-        /// Checks interlock status and returns true if all are satisfied.
-        /// </summary>
-        public bool CheckInterlocks()
-        {
-            UpdateInterlockStatus();
-            return InterlockGood;
-        }
-
-        /// <summary>
-        /// Gets the interlock status for LCD transmission.
-        /// </summary>
-        public byte GetInterlockStatusForLCD()
-        {
-            return InterlockStatus;
-        }
-
-        /// <summary>
-        /// Gets the interlock mask for LCD transmission.
-        /// </summary>
-        public byte GetInterlockMaskForLCD()
-        {
-            return _interlockMask;
-        }
-
-        /// <summary>
-        /// Sets the interlock mask from an LCD command.
-        /// </summary>
-        public void SetInterlockMaskFromLCD(byte maskByte)
-        {
-            InterlockMask = (byte)(maskByte & 0x3F);
         }
     }
 }

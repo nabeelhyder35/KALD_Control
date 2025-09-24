@@ -9,8 +9,6 @@
       mc:Ignorable="d">
 
     <Page.Resources>
-        <local:InterlockStatusConverter x:Key="InterlockStatusConverter"/>
-        <local:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:ChargeStateConverter x:Key="ChargeStateConverter"/>
         <conv:BoolToYesNoConverter x:Key="BoolToYesNoConverter"/>
@@ -18,6 +16,8 @@
         <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
         <conv:EnergyToStringConverter x:Key="EnergyToStringConverter"/>
         <conv:WaveformToStringConverter x:Key="WaveformToStringConverter"/>
+        <conv:BoolToOkFaultConverter x:Key="BoolToOkFaultConverter"/>
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <Style x:Key="DataCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
@@ -417,10 +417,10 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="OK" 
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding InterlockStatus.PowerOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- COOLANT TEMP -->
@@ -432,10 +432,10 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="OK" 
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding InterlockStatus.TempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.DoorOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- DOOR -->
@@ -447,7 +447,7 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="OK" 
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
                                                        Foreground="{Binding InterlockStatus.DoorOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
@@ -462,7 +462,7 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="OK" 
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
                                                        Foreground="{Binding InterlockStatus.WaterOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
@@ -473,7 +473,7 @@
                                             <TextBlock Text="Dump Temp" 
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="OK" 
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
                                                        Foreground="{Binding InterlockStatus.CoverOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
@@ -484,7 +484,7 @@
                                             <TextBlock Text="Charger Over Volt"
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="OK"
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
                                                        Foreground="{Binding InterlockStatus.DischargeTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
@@ -495,7 +495,7 @@
                                             <TextBlock Text="Charger Over Temp"  
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="OK"
+                                            <TextBlock Text="{Binding _interlocks.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
                                                        Foreground="{Binding InterlockStatus.OverVoltageOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
