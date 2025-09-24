@@ -418,9 +418,7 @@ namespace KALD_Control.Models
         Reserved1 = 1
     }
 
-    // Models.cs - CORRECTED VERSION
-
-    // Models.cs - CORRECTED ENUMS
+  
 
     /// <summary>
     /// Commands RECEIVED from FPGA (FPGA → GUI)
@@ -1229,11 +1227,14 @@ namespace KALD_Control.Models
 
         private void UpdateInterlockStatus()
         {
-            // Map input bits 2–7 to interlock status bits 0–5
+            // Map input bits 2–7 to interlock status bits 0–5 (consistent with FPGA)
             byte inputBits = (byte)((_inputStates >> 2) & 0x3F);
-            // Interlocks are active low; invert and mask
+
+            // Interlocks are active low; invert and mask with 0x3F (6 bits for NIOS compatibility)
             InterlockStatus = (byte)((~inputBits) & _interlockMask & 0x3F);
-            InterlockGood = InterlockStatus == (_interlockMask & 0x3F);
+
+            // Check if all enabled interlocks are satisfied
+            InterlockGood = (InterlockStatus & _interlockMask) == _interlockMask;
             Timestamp = DateTime.Now;
         }
 

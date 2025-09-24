@@ -17,6 +17,7 @@
         <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
         <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
         <conv:EnergyToStringConverter x:Key="EnergyToStringConverter"/>
+        <conv:WaveformToStringConverter x:Key="WaveformToStringConverter"/>
         <Style x:Key="DataCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
@@ -150,7 +151,7 @@
                                 CornerRadius="4"/>
                     </Grid>
                 </Border>
-                            
+
                 <!-- System Status Overview -->
                 <Border Grid.Row="1" Style="{StaticResource DataCardStyle}" Margin="0,0,0,16">
                     <Grid>
@@ -168,9 +169,9 @@
                             <TextBlock Text="System State" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <Border Width="16" Height="16" CornerRadius="8" Margin="0,0,8,0"
-                        Background="{Binding DeviceData.SystemState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
-                                <TextBlock Text="{Binding DeviceData.SystemState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
-                           FontSize="18" FontWeight="SemiBold"/>
+                                        Background="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
+                                <TextBlock Text="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
+                                           FontSize="18" FontWeight="SemiBold"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -179,7 +180,7 @@
                             <TextBlock Text="Voltage" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="{Binding DeviceData.ActualVoltage, Mode=OneWay}" 
-                           Style="{StaticResource MetricValueStyle}"/>
+                                           Style="{StaticResource MetricValueStyle}"/>
                                 <TextBlock Text="V" Style="{StaticResource MetricUnitStyle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -188,8 +189,8 @@
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Energy" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="{Binding DeviceData.Energy, Converter={StaticResource EnergyToStringConverter}, Mode=OneWay}" 
-                           Style="{StaticResource MetricValueStyle}"/>
+                                <TextBlock Text="{Binding DeviceData.RunStatus.Energy, Converter={StaticResource EnergyToStringConverter}, Mode=OneWay}" 
+                                           Style="{StaticResource MetricValueStyle}"/>
                                 <TextBlock Text="J" Style="{StaticResource MetricUnitStyle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -198,15 +199,15 @@
                         <StackPanel Grid.Column="3">
                             <TextBlock Text="Shot Count" Style="{StaticResource SubheaderStyle}"/>
                             <TextBlock Text="{Binding DeviceData.ShotCount, Mode=OneWay}" 
-                       Style="{StaticResource MetricValueStyle}"/>
+                                       Style="{StaticResource MetricValueStyle}"/>
                         </StackPanel>
 
                         <!-- Charge Voltage -->
                         <StackPanel Grid.Column="4">
                             <TextBlock Text="Charge Voltage" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="{Binding DeviceData.ChargeState, Converter={StaticResource ChargeStateConverter}, ConverterParameter=MeasuredVolts, Mode=OneWay}" 
-                           Style="{StaticResource MetricValueStyle}"/>
+                                <TextBlock Text="{Binding DeviceData.ChargeState.MeasuredVolts, Mode=OneWay}" 
+                                           Style="{StaticResource MetricValueStyle}"/>
                                 <TextBlock Text="V" Style="{StaticResource MetricUnitStyle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -215,12 +216,11 @@
                         <StackPanel Grid.Column="5">
                             <TextBlock Text="Charge Done" Style="{StaticResource SubheaderStyle}"/>
                             <TextBlock Foreground="{Binding DeviceData.ChargeState.ChargeDone, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"
-                       Text="{Binding DeviceData.ChargeState.ChargeDone, Converter={StaticResource BoolToYesNoConverter}, Mode=OneWay}" 
-                       Style="{StaticResource MetricValueStyle}"/>
+                                       Text="{Binding DeviceData.ChargeState.ChargeDone, Converter={StaticResource BoolToYesNoConverter}, Mode=OneWay}" 
+                                       Style="{StaticResource MetricValueStyle}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
-                
 
                 <!-- Main Control Grid -->
                 <Grid Grid.Row="2">
@@ -313,7 +313,7 @@
                                 <NumberBox Header="Voltage Setpoint (V)"
                                            Value="{Binding VoltageSetpoint, Mode=TwoWay}"
                                            Minimum="0"
-                                           Maximum="{x:Bind local:Constants.MaxVoltage}"
+                                           Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Voltage" 
                                         Command="{Binding ApplySettingsCommand}"
@@ -331,18 +331,18 @@
                                 <TextBlock Text="Pulse Configuration" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Frequency (Hz)"
                                            Value="{Binding FrequencySetpoint, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinFrequency}"
-                                           Maximum="{x:Bind local:Constants.MaxFrequency}"
+                                           Minimum="1"
+                                           Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Pulse Width (μs)"
                                            Value="{Binding PulseWidth, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinPulseWidth}"
-                                           Maximum="{x:Bind local:Constants.MaxPulseWidth}"
+                                           Minimum="1"
+                                           Maximum="10000"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Total Shots"
                                            Value="{Binding TotalShots, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinTotalShots}"
-                                           Maximum="{x:Bind local:Constants.MaxTotalShots}"
+                                           Minimum="1"
+                                           Maximum="1000000"
                                            HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Trigger Mode"
                                           ItemsSource="{Binding TriggerModes}"
@@ -364,12 +364,12 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Laser Delays" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Delay 1 (μs)"
-                                           Value="{Binding Delay1, Mode=TwoWay}"
+                                           Value="{Binding DeviceData.PulseConfig.Delay1, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Delay 2 (μs)"
-                                           Value="{Binding Delay2, Mode=TwoWay}"
+                                           Value="{Binding DeviceData.PulseConfig.Delay2, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
@@ -469,7 +469,7 @@
                                         Style="{StaticResource AccentButtonStyle}"
                                         HorizontalAlignment="Stretch"/>
                                 <TextBlock Text="Waveform Data" Style="{StaticResource SubheaderStyle}"/>
-                                <TextBlock Text="{x:Bind GetWaveformDataString(), Mode=OneWay}"
+                                <TextBlock Text="{Binding DeviceData.Waveform.Samples, Converter={StaticResource WaveformToStringConverter}, Mode=OneWay}"
                                            FontFamily="Consolas"
                                            FontSize="12"
                                            TextWrapping="Wrap"/>

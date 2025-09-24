@@ -94,7 +94,6 @@ namespace KALD_Control.Converters
     /// <summary>
     /// Converts a boolean value to GridLength.
     /// </summary>
-    // BoolToGridLengthConverter.cs
     public class BoolToGridLengthConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -108,7 +107,9 @@ namespace KALD_Control.Converters
         }
     }
 
-    // ExpandCollapseIconConverter.cs
+    /// <summary>
+    /// Converts a boolean value to an expand/collapse icon.
+    /// </summary>
     public class ExpandCollapseIconConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -237,7 +238,11 @@ namespace KALD_Control.Converters
             throw new NotImplementedException();
         }
     }
-    public class BoolToYesNoConverter : Microsoft.UI.Xaml.Data.IValueConverter
+
+    /// <summary>
+    /// Converts a boolean value to "Yes" or "No".
+    /// </summary>
+    public class BoolToYesNoConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -249,6 +254,7 @@ namespace KALD_Control.Converters
             throw new NotImplementedException();
         }
     }
+
     /// <summary>
     /// Converts a boolean value to the inverse visibility.
     /// </summary>
@@ -423,6 +429,29 @@ namespace KALD_Control.Converters
         }
     }
 
+    /// <summary>
+    /// Converts a waveform samples array to a formatted string.
+    /// </summary>
+    public class WaveformToStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is ushort[] samples)
+            {
+                return string.Join(", ", samples);
+            }
+            return "No data";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Converts a TriggerModeType enum to a string.
+    /// </summary>
     public class TriggerModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -445,6 +474,9 @@ namespace KALD_Control.Converters
         }
     }
 
+    /// <summary>
+    /// Converts a ShotModeType enum to a string.
+    /// </summary>
     public class ShotModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -467,6 +499,9 @@ namespace KALD_Control.Converters
         }
     }
 
+    /// <summary>
+    /// Converts a ShutterModeType enum to a string.
+    /// </summary>
     public class ShutterModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -489,6 +524,9 @@ namespace KALD_Control.Converters
         }
     }
 
+    /// <summary>
+    /// Converts a ShutterStateType enum to a string.
+    /// </summary>
     public class ShutterStateToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
