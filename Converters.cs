@@ -237,7 +237,18 @@ namespace KALD_Control.Converters
             throw new NotImplementedException();
         }
     }
+    public class BoolToYesNoConverter : Microsoft.UI.Xaml.Data.IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            return value is bool isDone && isDone ? "Yes" : "No";
+        }
 
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
     /// <summary>
     /// Converts a boolean value to the inverse visibility.
     /// </summary>
