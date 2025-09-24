@@ -502,7 +502,8 @@
                         Command="{Binding ClearLogsCommand}"
                         Style="{StaticResource SecondaryButtonStyle}"/>
 
-                <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" 
+                <ScrollViewer x:Name="LogScrollViewer"
+                              Grid.Row="1" Grid.ColumnSpan="2" 
                               VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Disabled">
                     <TextBlock Text="{Binding LogText, Mode=OneWay}" 

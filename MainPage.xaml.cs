@@ -17,6 +17,9 @@ namespace KALD_Control
         public MainPage()
         {
             this.InitializeComponent();
+            // If DataContext is set here, subscribe immediately
+            if (DataContext is MainViewModel vm)
+                vm.PropertyChanged += ViewModel_PropertyChanged;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -26,6 +29,15 @@ namespace KALD_Control
             {
                 ViewModel = vm;
                 this.DataContext = ViewModel;
+                ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            }
+        }
+
+        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainViewModel.LogText))
+            {
+                LogScrollViewer?.ChangeView(null, LogScrollViewer.ScrollableHeight, null);
             }
         }
 
