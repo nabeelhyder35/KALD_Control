@@ -400,40 +400,111 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Right Panel: Safety Interlocks, Soft Start, Waveform -->
+                    <!-- Right Panel: Interlocks, Soft Start, Waveform -->
                     <StackPanel Grid.Column="2" Margin="8,0,0,0" Spacing="16">
-                        <!-- Safety Interlocks -->
+                        <!-- Interlocks Settings -->
                         <Border Style="{StaticResource DataCardStyle}">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Safety Interlocks" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="Interlocks Status And Settings" Style="{StaticResource SectionHeaderStyle}"/>
                                 <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <StackPanel>
-                                        <TextBlock Text="Power OK" 
-                                                   Foreground="{Binding InterlockStatus.PowerOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Temperature OK" 
-                                                   Foreground="{Binding InterlockStatus.TempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Door OK" 
-                                                   Foreground="{Binding InterlockStatus.DoorOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Water OK" 
-                                                   Foreground="{Binding InterlockStatus.WaterOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="Cover OK" 
-                                                   Foreground="{Binding InterlockStatus.CoverOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Discharge Temp OK" 
-                                                   Foreground="{Binding InterlockStatus.DischargeTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Over Voltage OK" 
-                                                   Foreground="{Binding InterlockStatus.OverVoltageOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                        <TextBlock Text="Over Temp OK" 
-                                                   Foreground="{Binding InterlockStatus.OverTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                    <StackPanel Spacing="2">
+                                        <!-- COOLANT FLOW -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Coolant Flow" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.PowerOK, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="OK" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.PowerOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- COOLANT TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Coolant Temp" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.TempOK, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="OK" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.TempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- DOOR -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Door" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.DoorOK, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="OK" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.DoorOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- COVER -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Cover" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.WaterOK, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="OK" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.WaterOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- DUMP TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Dump Temp" 
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="OK" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.CoverOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- CHARGER OVER VOLT -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Charger Over Volt"
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="OK"
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.DischargeTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- CHARGER OVER TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Charger Over Temp"  
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="OK"
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockStatus.OverVoltageOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
-                                <Button Content="Apply Interlock Mask" 
-                                        Command="{Binding SendInterlockMaskCommand}"
-                                        Style="{StaticResource AccentButtonStyle}"
-                                        HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </Border>
+
 
                         <!-- Soft Start Configuration -->
                         <Border Style="{StaticResource DataCardStyle}">
