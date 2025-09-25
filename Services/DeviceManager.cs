@@ -75,209 +75,6 @@ namespace KALD_Control.Services
             _serialPort.DataReceived += OnDataReceived;
         }
 
-        private void OnErrorReceived(object sender, SerialErrorReceivedEventArgs e)
-        {
-            try
-            {
-                Log($"Serial port error: {e.EventType}");
-                switch (e.EventType)
-                {
-                    case SerialError.RXOver:
-                        Log("Input buffer overflow; discarding input buffer");
-                        lock (_serialLock)
-                        {
-                            _serialPort.DiscardInBuffer();
-                            _receiveBuffer.Clear();
-                            ResetParser();
-                        }
-                        break;
-                    case SerialError.Overrun:
-                        Log("Buffer overrun; possible data loss");
-                        break;
-                    case SerialError.RXParity:
-                        Log("Parity error; verify serial settings");
-                        break;
-                    case SerialError.Frame:
-                        Log("Framing error; check baud rate/stop bits");
-                        break;
-                    case SerialError.TXFull:
-                        Log("Output buffer full; discarding output buffer");
-                        _serialPort.DiscardOutBuffer();
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error in OnErrorReceived: {ex.Message}");
-            }
-        }
-
-        public void Connect(string portName, int baudRate = 115200)
-        {
-            if (IsConnected)
-            {
-                Log("Already connected; disconnecting first");
-                Disconnect();
-            }
-
-            try
-            {
-                _serialPort.PortName = portName;
-                _serialPort.BaudRate = baudRate;
-                _serialPort.Open();
-                _serialPort.DiscardInBuffer();
-                _serialPort.DiscardOutBuffer();
-                _receiveBuffer.Clear();
-                ResetParser();
-                Log($"Connected to {portName} at {baudRate} baud");
-            }
-            catch (Exception ex)
-            {
-                Log($"Failed to connect to {portName}: {ex.Message}");
-                throw new InvalidOperationException($"Connection failed: {ex.Message}", ex);
-            }
-        }
-
-        public void Disconnect()
-        {
-            if (!IsConnected)
-            {
-                Log("Already disconnected");
-                return;
-            }
-
-            try
-            {
-                _serialPort.Close();
-                Log("Disconnected from serial port");
-                ResetParser();
-                _receiveBuffer.Clear();
-            }
-            catch (Exception ex)
-            {
-                Log($"Error disconnecting: {ex.Message}");
-            }
-        }
-
-        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            try
-            {
-                if (!IsConnected) return;
-                int bytesToRead = _serialPort.BytesToRead;
-                if (bytesToRead <= 0) return;
-                byte[] buffer = new byte[bytesToRead];
-                int bytesRead = _serialPort.Read(buffer, 0, bytesToRead);
-                if (bytesRead > 0)
-                {
-                    ProcessReceivedData(buffer, bytesRead);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error in OnDataReceived: {ex.Message}");
-                ResetParser();
-            }
-        }
-
-        private void ProcessReceivedData(byte[] data, int bytesRead)
-        {
-            lock (_serialLock)
-            {
-                try
-                {
-                    _lastByteReceived = DateTime.Now;
-                    Log($"Processing received data: {bytesRead} bytes, Hex: {BitConverter.ToString(data, 0, bytesRead).Replace("-", " ")}");
-
-                    // Add new data to buffer
-                    _receiveBuffer.AddRange(data.Take(bytesRead));
-
-                    // Process all complete packets in buffer
-                    while (_receiveBuffer.Count > 0)
-                    {
-                        int packetEndIndex = FindPacketEnd(_receiveBuffer);
-                        if (packetEndIndex == -1)
-                        {
-                            Log($"No complete packet found in buffer. Buffer size: {_receiveBuffer.Count} bytes");
-                            break;
-                        }
-
-                        // Extract and process the complete packet
-                        byte[] packet = _receiveBuffer.Take(packetEndIndex + 1).ToArray();
-                        Log($"Complete packet found: {BitConverter.ToString(packet).Replace("-", " ")}");
-                        _receiveBuffer.RemoveRange(0, packetEndIndex + 1);
-
-                        ProcessCompletePacket(packet);
-                    }
-
-                    // Buffer cleanup
-                    if (_receiveBuffer.Count > 2048)
-                    {
-                        Log("Receive buffer overflow protection triggered");
-                        _receiveBuffer.Clear();
-                        ResetParser();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log($"Error in ProcessReceivedData: {ex.Message}");
-                    _receiveBuffer.Clear();
-                    ResetParser();
-                }
-            }
-        }
-
-        private int FindPacketEnd(List<byte> buffer)
-        {
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                if (buffer[i] == ProtocolConstants.STX && i + 4 < buffer.Count)
-                {
-                    // Extract length
-                    ushort dataLength = (ushort)((buffer[i + 1] << 8) | buffer[i + 2]);
-                    int totalPacketLength = 1 + 2 + 1 + dataLength + 1 + 1; // STX + LEN + CMD + DATA + CHK + ETX
-
-                    if (i + totalPacketLength <= buffer.Count &&
-                        buffer[i + totalPacketLength - 1] == ProtocolConstants.ETX)
-                    {
-                        return i + totalPacketLength - 1;
-                    }
-                }
-            }
-            return -1;
-        }
-
-        private void ProcessCompletePacket(byte[] packet)
-        {
-            try
-            {
-                Log($"Processing complete packet: {BitConverter.ToString(packet).Replace("-", " ")}");
-                var validationResult = CommunicationHelper.ValidatePacket(packet);
-
-                if (validationResult == PacketValidationResult.Valid)
-                {
-                    if (CommunicationHelper.ExtractPacketData(packet, out byte command, out byte[] data))
-                    {
-                        Log($"Packet validated successfully. Command: {(uiRxCommand)command} (0x{command:X2}), Data: {BitConverter.ToString(data).Replace("-", " ")}");
-                        // Process on background thread to avoid blocking serial port
-                        Task.Run(() => ProcessPacket((uiRxCommand)command, data));
-                    }
-                    else
-                    {
-                        Log("Failed to extract packet data from valid packet");
-                    }
-                }
-                else
-                {
-                    Log($"Checksum Failed! Data: {BitConverter.ToString(packet).Replace("-", " ")}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error in ProcessCompletePacket: {ex.Message}, Packet: {BitConverter.ToString(packet).Replace("-", " ")}");
-            }
-        }
-
         public byte[] ToBigEndian(ushort value) => new byte[] { (byte)(value >> 8), (byte)(value & 0xFF) };
         public byte[] ToBigEndian(uint value) => new byte[] { (byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)(value & 0xFF) };
 
@@ -352,6 +149,87 @@ namespace KALD_Control.Services
         /*---------------------------------------------------------------------------
          * FUNCTIONS FOR SERIAL PORT HANDLING
          ----------------------------------------------------------------------------*/
+        private void OnErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            try
+            {
+                Log($"Serial port error: {e.EventType}");
+                switch (e.EventType)
+                {
+                    case SerialError.RXOver:
+                        Log("Input buffer overflow; discarding input buffer");
+                        lock (_serialLock)
+                        {
+                            _serialPort.DiscardInBuffer();
+                            _receiveBuffer.Clear();
+                            ResetParser();
+                        }
+                        break;
+                    case SerialError.Overrun:
+                        Log("Buffer overrun; possible data loss");
+                        break;
+                    case SerialError.RXParity:
+                        Log("Parity error; verify serial settings");
+                        break;
+                    case SerialError.Frame:
+                        Log("Framing error; check baud rate/stop bits");
+                        break;
+                    case SerialError.TXFull:
+                        Log("Output buffer full; discarding output buffer");
+                        _serialPort.DiscardOutBuffer();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error in OnErrorReceived: {ex.Message}");
+            }
+        }
+        public void Connect(string portName, int baudRate = 115200)
+        {
+            if (IsConnected)
+            {
+                Log("Already connected; disconnecting first");
+                Disconnect();
+            }
+
+            try
+            {
+                _serialPort.PortName = portName;
+                _serialPort.BaudRate = baudRate;
+                _serialPort.Open();
+                _serialPort.DiscardInBuffer();
+                _serialPort.DiscardOutBuffer();
+                _receiveBuffer.Clear();
+                ResetParser();
+                Log($"Connected to {portName} at {baudRate} baud");
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to connect to {portName}: {ex.Message}");
+                throw new InvalidOperationException($"Connection failed: {ex.Message}", ex);
+            }
+        }
+        public void Disconnect()
+        {
+            if (!IsConnected)
+            {
+                Log("Already disconnected");
+                return;
+            }
+
+            try
+            {
+                _serialPort.Close();
+                Log("Disconnected from serial port");
+                ResetParser();
+                _receiveBuffer.Clear();
+            }
+            catch (Exception ex)
+            {
+                Log($"Error disconnecting: {ex.Message}");
+            }
+        }
         private void ResetParser()
         {
             _receiveBuffer.Clear();
@@ -421,11 +299,11 @@ namespace KALD_Control.Services
             var runStatus = new RunStatusData
             {
                 ShotCount = (uint)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]),
-                State = (LaserStateType)data[4],
-                Energy = (ushort)((data[5] << 8) | data[6]),
-                Power = (ushort)((data[7] << 8) | data[8]),
-                Current = (ushort)((data[9] << 8) | data[10]),
-                VDroop = (ushort)((data[11] << 8) | data[12]),
+                State = (LaserStateType)data[5],
+                Energy = (ushort)((data[6] << 8) | data[7]),
+                Power = (ushort)((data[8] << 8) | data[9]),
+                Current = (ushort)((data[10] << 8) | data[11]),
+                VDroop = (ushort)((data[12] << 8) | data[13]),
             };
             _deviceData.RunStatus = runStatus;
             SafeInvoke(() => RunStatusUpdated?.Invoke(this, runStatus));
@@ -433,29 +311,27 @@ namespace KALD_Control.Services
         }
         private void HandleLsrIntStatus(byte[] data)
         {
-            byte status = data[0];
-            //var digitalIO = new DigitalIOState();
-            //digitalIO.InputStates = data[0];
-            //var status = digitalIO.GetInterlockStatusForLCD();
-            //SafeInvoke(() =>
-            //{
-            //    IntStatusUpdated?.Invoke(this, status);
-            //    DigitalIOUpdated?.Invoke(this, digitalIO);
-            //});
+            InterlockStatus status = new InterlockStatus { };
+            status.Status = data[0];
+            SafeInvoke(() =>
+            {
+                IntStatusUpdated?.Invoke(this, status.Status);
+                Log($"IntStatusUpdated Method Invoked");
+                //DigitalIOUpdated?.Invoke(this, digitalIO);
+            });
             Log($"Interlock status: 0x{data[0]:X2}");
         }
         private void HandleLsrIntMask(byte[] data)
         {
             byte mask = data[0];
-            
-            //var digitalIO = new DigitalIOState();
-            //digitalIO.SetInterlockMaskFromLCD(data[0]);
+            //InterlockMask _interlockMask;
+            //if ()
             //SafeInvoke(() =>
             //{
             //    IntMaskUpdated?.Invoke(this, data[0]);
-            //    DigitalIOUpdated?.Invoke(this, digitalIO);
+            //    Log($"IntMaskUpdated Method Invoked");
             //});
-            Log($"Interlock mask: 0x{data[0]:X2}");
+            //Log($"Interlock mask: 0x{data[0]:X2}");
         }
         private void HandleLsrWaveform(byte[] data)
         {
@@ -623,7 +499,6 @@ namespace KALD_Control.Services
                                 Log($"Unhandled command: {command} (0x{(byte)command:X2})");
                                 break;
                         }
-                        DeviceDataUpdated?.Invoke(this, _deviceData);
                     }
                     catch (Exception ex)
                     {
@@ -638,7 +513,122 @@ namespace KALD_Control.Services
                 CommandError?.Invoke(this, (command.ToString(), ex));
             }
         }
+        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            try
+            {
+                if (!IsConnected) return;
+                int bytesToRead = _serialPort.BytesToRead;
+                if (bytesToRead <= 0) return;
+                byte[] buffer = new byte[bytesToRead];
+                int bytesRead = _serialPort.Read(buffer, 0, bytesToRead);
+                if (bytesRead > 0)
+                {
+                    ProcessReceivedData(buffer, bytesRead);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error in OnDataReceived: {ex.Message}");
+                ResetParser();
+            }
+        }
+        private void ProcessReceivedData(byte[] data, int bytesRead)
+        {
+            lock (_serialLock)
+            {
+                try
+                {
+                    _lastByteReceived = DateTime.Now;
+                    Log($"Processing received data: {bytesRead} bytes, Hex: {BitConverter.ToString(data, 0, bytesRead).Replace("-", " ")}");
 
+                    // Add new data to buffer
+                    _receiveBuffer.AddRange(data.Take(bytesRead));
+
+                    // Process all complete packets in buffer
+                    while (_receiveBuffer.Count > 0)
+                    {
+                        int packetEndIndex = FindPacketEnd(_receiveBuffer);
+                        if (packetEndIndex == -1)
+                        {
+                            Log($"No complete packet found in buffer. Buffer size: {_receiveBuffer.Count} bytes");
+                            break;
+                        }
+
+                        // Extract and process the complete packet
+                        byte[] packet = _receiveBuffer.Take(packetEndIndex + 1).ToArray();
+                        Log($"Complete packet found: {BitConverter.ToString(packet).Replace("-", " ")}");
+                        _receiveBuffer.RemoveRange(0, packetEndIndex + 1);
+
+                        ProcessCompletePacket(packet);
+                    }
+
+                    // Buffer cleanup
+                    if (_receiveBuffer.Count > 2048)
+                    {
+                        Log("Receive buffer overflow protection triggered");
+                        _receiveBuffer.Clear();
+                        ResetParser();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"Error in ProcessReceivedData: {ex.Message}");
+                    _receiveBuffer.Clear();
+                    ResetParser();
+                }
+            }
+        }
+        private int FindPacketEnd(List<byte> buffer)
+        {
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                if (buffer[i] == ProtocolConstants.STX && i + 4 < buffer.Count)
+                {
+                    // Extract length
+                    ushort dataLength = (ushort)((buffer[i + 1] << 8) | buffer[i + 2]);
+                    int totalPacketLength = 1 + 2 + 1 + dataLength + 1 + 1; // STX + LEN + CMD + DATA + CHK + ETX
+
+                    if (i + totalPacketLength <= buffer.Count &&
+                        buffer[i + totalPacketLength - 1] == ProtocolConstants.ETX)
+                    {
+                        return i + totalPacketLength - 1;
+                    }
+                }
+            }
+            return -1;
+        }
+        private void ProcessCompletePacket(byte[] packet)
+        {
+            try
+            {
+                Log($"Processing complete packet: {BitConverter.ToString(packet).Replace("-", " ")}");
+                var validationResult = CommunicationHelper.ValidatePacket(packet);
+
+                if (validationResult == PacketValidationResult.Valid)
+                {
+                    if (CommunicationHelper.ExtractPacketData(packet, out byte command, out byte[] data))
+                    {
+                        Log($"Packet validated successfully. Command: {(uiRxCommand)command} (0x{command:X2}), Data: {BitConverter.ToString(data).Replace("-", " ")}");
+                        // Process on background thread to avoid blocking serial port
+                        Task.Run(() => ProcessPacket((uiRxCommand)command, data));
+                    }
+                    else
+                    {
+                        Log("Failed to extract packet data from valid packet");
+                    }
+                }
+                else
+                {
+                    Log($"Checksum Failed! Data: {BitConverter.ToString(packet).Replace("-", " ")}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error in ProcessCompletePacket: {ex.Message}, Packet: {BitConverter.ToString(packet).Replace("-", " ")}");
+            }
+        }
+        
         /*---------------------------------------------------------------------------
          * FUNCTIONS FOR SENDING COMMANDS (TX) 
          ----------------------------------------------------------------------------*/

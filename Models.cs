@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace KALD_Control.Models
 {
@@ -34,73 +35,109 @@ namespace KALD_Control.Models
     /// Each bit in the status/mask byte represents a specific interlock condition.
     /// A bit value of 0 indicates the condition is OK, while 1 indicates a fault.
     /// </summary>
-    public class Interlocks : ObservableObject
+    public class InterlockStatus : ObservableObject
     {
-        private byte _status = 0x3F;
-        private byte _mask = 0x0F; // Default mask: All 4 masks enabled
+        private byte _status = 0x00;
 
+        // Status properties: true if the interlock condition is OK (bit is 0), false if faulted (bit is 1)
+        public bool coolantFlowStatus
+        {
+            get => (_status & 0x01) == 0;
+        }
+        public bool coolantTempStatus
+        {
+            get => (_status & 0x02) == 0;
+        }
+        public bool DoorStatus
+        {
+            get => (_status & 0x04) == 0;
+        }
+        public bool CoverStatus
+        {
+            get => (_status & 0x08) == 0;
+        }
+        public bool DumpTempStatus
+        {
+            get => (_status & 0x10) == 0;
+        }
+        public bool ChargerOverVoltageStatus
+        {
+            get => (_status & 0x20) == 0;
+        }
+        public bool ChargerOverTempStatus { 
+            get => (_status & 0x40) == 0;
+        }
         public byte Status
         {
             get => _status;
             set
             {
-                _status = (byte)(value & 0x7f);
+                _status = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(coolantFlowStatus));
+                OnPropertyChanged(nameof(coolantTempStatus));
+                OnPropertyChanged(nameof(DoorStatus));
+                OnPropertyChanged(nameof(CoverStatus));
+                OnPropertyChanged(nameof(DumpTempStatus));
+                OnPropertyChanged(nameof(ChargerOverVoltageStatus));
+                OnPropertyChanged(nameof(ChargerOverTempStatus));
             }
         }
-
-        /// <summary>
-        /// Gets or sets the interlock mask byte. Updates all related masked properties when changed.
-        /// </summary>
-        public byte Mask
+    }
+    public class InterlockMask : ObservableObject
+    {
+        private bool _coolantFlowEnabled = true;
+        private bool _coolantTempEnabled = true;
+        private bool _doorEnabled = true;
+        private bool _coverEnabled = true;
+        // Mask properties: true if the interlock condition is enabled (bit is 1), false if disabled (bit is 0)
+        public bool CoolantFlowEnabled
         {
-            get => _mask;
+            get => _coolantFlowEnabled;
             set
             {
-                if (SetProperty(ref _mask, value))
-                {
-                    OnPropertyChanged(nameof(coolantFlowEnabled));
-                    OnPropertyChanged(nameof(coolantTempEnabled));
-                    OnPropertyChanged(nameof(DoorEnabled));
-                    OnPropertyChanged(nameof(CoverEnabled));
-                }
+                _coolantFlowEnabled = value;
+                OnPropertyChanged();
             }
         }
-
-        // Status properties: true if the interlock condition is OK (bit is 0), false if faulted (bit is 1)
-        public bool coolantFlowStatus => (_status & 0x01) == 0;
-        public bool coolantTempStatus => (_status & 0x02) == 0;
-        public bool DoorStatus => (_status & 0x04) == 0;
-        public bool CoverStatus => (_status & 0x08) == 0;
-        public bool DumpTempStatus => (_status & 0x10) == 0;
-        public bool ChargerOverVoltageStatus => (_status & 0x20) == 0;
-        public bool ChargerOverTempStatus => (_status & 0x40) == 0;
-
-        /// <summary>
-        /// Gets a value indicating whether all enabled interlock conditions are OK.
-        /// </summary>
-        public bool AllOK => (coolantFlowStatus || !coolantFlowEnabled) &&
-                             (coolantTempStatus || !coolantTempEnabled) &&
-                             (DoorStatus || !DoorEnabled) &&
-                             (CoverStatus || !CoverEnabled) &&
-                             (DumpTempStatus) && (ChargerOverVoltageStatus) && (ChargerOverTempStatus);
-
-        // Mask properties: true if the interlock condition is enabled (bit is 1), false if disabled (bit is 0)
-        public bool coolantFlowEnabled => (_mask & 0x01) != 0;
-        public bool coolantTempEnabled => (_mask & 0x02) != 0;
-        public bool DoorEnabled => (_mask & 0x04) != 0;
-        public bool CoverEnabled => (_mask & 0x10) != 0;
-
-        /// <summary>
-        /// Updates the interlock mask from a received byte.
-        /// </summary>
-        /// <param name="newMask">The new mask byte received from the device.</param>
-        public void UpdateMask(byte newMask)
+        public bool CoolantTempEnabled
         {
-            Mask = newMask; // Allow 8 bits for UI, NIOS uses 6 bits
+            get => _coolantTempEnabled;
+            set
+            {
+                _coolantTempEnabled = value;
+                OnPropertyChanged();
+            }
         }
-        public void UpdateStatus(byte newStatus)
+        public bool DoorEnabled
         {
-            Status = newStatus; // Allow 8 bits for UI, NIOS uses 6 bits
+            get => _doorEnabled;
+            set
+            {
+                _doorEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+        public bool CoverEnabled
+        {
+            get => _coverEnabled;
+            set
+            {
+                _coverEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+        public byte Mask
+        {
+            get
+            {
+                byte mask = 0;
+                if (_coolantFlowEnabled) mask |= 0x01;
+                if (_coolantTempEnabled) mask |= 0x02;
+                if (_doorEnabled) mask |= 0x04;
+                if (_coverEnabled) mask |= 0x08;
+                return mask |= 0x70;
+            }
         }
     }
 

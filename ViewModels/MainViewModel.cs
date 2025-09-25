@@ -30,8 +30,9 @@ namespace KALD_Control.ViewModels
         private bool _waveformEnabled = false;
         private DateTime _lastCommandTime = DateTime.MinValue;
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
-        
-        public Interlocks _interlocks = new Interlocks();
+
+        public InterlockStatus _interlockStatus { get; set; } = new InterlockStatus();
+        public InterlockMask _interlockMask { get; set; } = new InterlockMask();
 
         private ushort _frequencySetpoint = 100;
         private ushort _pulseWidth = 100;
@@ -200,6 +201,7 @@ namespace KALD_Control.ViewModels
         public ICommand DisarmCommand { get; }
         public ICommand FireCommand { get; }
         public ICommand ApplySettingsCommand { get; }
+        public ICommand intmaskCommand { get; }
 
         public MainViewModel(DeviceManager deviceManager, ILogger<MainViewModel> logger, DispatcherQueue dispatcherQueue)
         {
@@ -228,11 +230,11 @@ namespace KALD_Control.ViewModels
             DisarmCommand = new RelayCommand(ExecuteDisarm, () => CanSendCommand());
             FireCommand = new RelayCommand(ExecuteFire, () => CanSendCommand());
             ApplySettingsCommand = new RelayCommand(ExecuteApplySettings, () => CanSendCommand());
+            //intmaskCommand = new RelayCommand(ExecuteIntMaskUpdated, () => CanSendCommand());
 
             _deviceManager.StateUpdated += OnStateUpdated;
             _deviceManager.RunStatusUpdated += OnRunStatusUpdated;
             _deviceManager.LogMessage += OnLogMessage;
-            _deviceManager.IntStatusUpdated += OnIntStatusUpdated;
             _deviceManager.VoltsUpdated += OnVoltsUpdated;
             _deviceManager.ChargeStateUpdated += OnChargeStateUpdated;
             _deviceManager.ShutterConfigUpdated += OnShutterConfigUpdated;
@@ -244,6 +246,8 @@ namespace KALD_Control.ViewModels
             _deviceManager.CommandError += OnCommandError;
             _deviceManager.ShotCountUpdated += OnShotCountUpdated;
             _deviceManager.DeviceDataUpdated += OnDeviceDataUpdated;
+
+            _deviceManager.IntStatusUpdated += OnIntStatusUpdated;
 
             ExecuteRefreshPorts();
         }
@@ -458,6 +462,15 @@ namespace KALD_Control.ViewModels
             });
         }
 
+        //private void ExecuteIntMaskUpdated()
+        //{
+        //    _dispatcherQueue.TryEnqueue(() =>
+        //    {
+        //        _deviceManager.SendIntMask(_interlockMask.Mask);
+        //        _logger.LogInformation($"Interlock status updated: 0x{_interlockMask.Mask:X2}");
+        //    });
+        //}
+
         private void ExecuteDebugTest()
         {
             if (!CanSendCommand()) return;
@@ -503,11 +516,11 @@ namespace KALD_Control.ViewModels
 
         private void OnIntStatusUpdated(object sender, byte status)
         {
-            //_dispatcherQueue.TryEnqueue(() =>
-            //{
-            //    InterlockStatus.UpdateFromByte(status);
-            //    _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
-            //});
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _interlockStatus.Status = status;
+                _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
+            });
         }
 
         private void OnVoltsUpdated(object sender, ushort volts)
@@ -640,6 +653,7 @@ namespace KALD_Control.ViewModels
                 ((RelayCommand)DisarmCommand)?.RaiseCanExecuteChanged();
                 ((RelayCommand)FireCommand)?.RaiseCanExecuteChanged();
                 ((RelayCommand)ApplySettingsCommand)?.RaiseCanExecuteChanged();
+                //((RelayCommand)intmaskCommand)?.RaiseCanExecuteChanged();
             });
         }
 
