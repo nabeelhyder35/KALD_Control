@@ -17,6 +17,13 @@ namespace KALD_Control.ViewModels
 {
     public class MainViewModel : ObservableObject, IDisposable
     {
+        public InterlockMask _interlockMask { get; set; }
+
+        public MainViewModel()
+        {
+            _interlockMask = new InterlockMask(this);
+        }
+
         private readonly DeviceManager _deviceManager;
         private readonly ILogger<MainViewModel> _logger;
         private readonly DispatcherQueue _dispatcherQueue;
@@ -32,7 +39,7 @@ namespace KALD_Control.ViewModels
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
 
         public InterlockStatus _interlockStatus { get; set; } = new InterlockStatus();
-        public InterlockMask _interlockMask { get; set; } = new InterlockMask();
+        //public InterlockMask _interlockMask { get; set; } = new InterlockMask(this);
 
         private ushort _frequencySetpoint = 100;
         private ushort _pulseWidth = 100;
@@ -201,7 +208,7 @@ namespace KALD_Control.ViewModels
         public ICommand DisarmCommand { get; }
         public ICommand FireCommand { get; }
         public ICommand ApplySettingsCommand { get; }
-        public ICommand intmaskCommand { get; }
+        //public ICommand intmaskCommand { get; }
 
         public MainViewModel(DeviceManager deviceManager, ILogger<MainViewModel> logger, DispatcherQueue dispatcherQueue)
         {
@@ -213,7 +220,7 @@ namespace KALD_Control.ViewModels
             DisconnectCommand = new RelayCommand(ExecuteDisconnect, () => IsConnected);
             RefreshPortsCommand = new RelayCommand(ExecuteRefreshPorts);
             ApplyPulseSettingsCommand = new RelayCommand(ExecuteApplyPulseSettings, () => CanSendCommand());
-            SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => CanSendCommand());
+            //SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => CanSendCommand());
             SendLaserDelaysCommand = new RelayCommand(ExecuteSendLaserDelays, () => CanSendCommand());
             ApplyShutterSettingsCommand = new RelayCommand(ExecuteApplyShutterSettings, () => CanSendCommand());
             ApplySoftStartCommand = new RelayCommand(ExecuteApplySoftStart, () => CanSendCommand());
@@ -352,14 +359,6 @@ namespace KALD_Control.ViewModels
             _logger.LogInformation("Sent pulse configuration");
         }
 
-        private void ExecuteSendInterlockMask()
-        {
-            if (!CanSendCommand()) return;
-            _lastCommandTime = DateTime.Now;
-            //_deviceManager.SendIntMask(DigitalIO.GetInterlockMaskForLCD());
-            //_logger.LogInformation($"Sent interlock mask: 0x{DigitalIO.GetInterlockMaskForLCD():X2}");
-        }
-
         private void ExecuteSendLaserDelays()
         {
             if (!CanSendCommand()) return;
@@ -462,14 +461,14 @@ namespace KALD_Control.ViewModels
             });
         }
 
-        //private void ExecuteIntMaskUpdated()
-        //{
-        //    _dispatcherQueue.TryEnqueue(() =>
-        //    {
-        //        _deviceManager.SendIntMask(_interlockMask.Mask);
-        //        _logger.LogInformation($"Interlock status updated: 0x{_interlockMask.Mask:X2}");
-        //    });
-        //}
+        public void ExecuteIntMaskUpdated()
+        {
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _deviceManager.SendIntMask(_interlockMask.Mask);
+                _logger.LogInformation($"Interlock status updated: 0x{_interlockMask.Mask:X2}");
+            });
+        }
 
         private void ExecuteDebugTest()
         {

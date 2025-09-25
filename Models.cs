@@ -1,4 +1,6 @@
-﻿using System;
+﻿using KALD_Control.ViewModels;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -86,18 +88,35 @@ namespace KALD_Control.Models
     }
     public class InterlockMask : ObservableObject
     {
+        private readonly MainViewModel _viewModel;
+        public InterlockMask(MainViewModel viewModel)
+        {
+            _viewModel = viewModel;
+        }
+
         private bool _coolantFlowEnabled = true;
         private bool _coolantTempEnabled = true;
         private bool _doorEnabled = true;
         private bool _coverEnabled = true;
+
+        // Event or Action to notify when mask changes
+        public event Action<byte> MaskChanged;
+        // Or if you prefer a direct method call:
+        private Action<byte> _onMaskChanged;
+
+
         // Mask properties: true if the interlock condition is enabled (bit is 1), false if disabled (bit is 0)
         public bool CoolantFlowEnabled
         {
             get => _coolantFlowEnabled;
             set
             {
-                _coolantFlowEnabled = value;
-                OnPropertyChanged();
+                if (_coolantFlowEnabled != value)
+                {
+                    _coolantFlowEnabled = value;
+                    OnPropertyChanged();
+                    OnMaskChanged();
+                }
             }
         }
         public bool CoolantTempEnabled
@@ -105,8 +124,12 @@ namespace KALD_Control.Models
             get => _coolantTempEnabled;
             set
             {
-                _coolantTempEnabled = value;
-                OnPropertyChanged();
+                if (_coolantTempEnabled != value)
+                {
+                    _coolantTempEnabled = value;
+                    OnPropertyChanged();
+                    OnMaskChanged();
+                }
             }
         }
         public bool DoorEnabled
@@ -114,17 +137,26 @@ namespace KALD_Control.Models
             get => _doorEnabled;
             set
             {
-                _doorEnabled = value;
-                OnPropertyChanged();
+                if (_doorEnabled != value)
+                {
+                    _doorEnabled = value;
+                    OnPropertyChanged();
+                    OnMaskChanged();
+                }
             }
         }
+
         public bool CoverEnabled
         {
             get => _coverEnabled;
             set
             {
-                _coverEnabled = value;
-                OnPropertyChanged();
+                if (_coverEnabled != value)
+                {
+                    _coverEnabled = value;
+                    OnPropertyChanged();
+                    OnMaskChanged();
+                }
             }
         }
         public byte Mask
@@ -136,8 +168,13 @@ namespace KALD_Control.Models
                 if (_coolantTempEnabled) mask |= 0x02;
                 if (_doorEnabled) mask |= 0x04;
                 if (_coverEnabled) mask |= 0x08;
-                return mask |= 0x70;
+                return (byte)(mask | 0x70);
             }
+        }
+
+        private void OnMaskChanged()
+        {
+            _viewModel?.ExecuteIntMaskUpdated();
         }
     }
 
