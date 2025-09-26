@@ -413,14 +413,14 @@
                                             <TextBlock Text="Coolant Flow" 
                                                        Width="120"
                                                        VerticalAlignment="Bottom"/>
-                                            <ToggleSwitch IsOn="{Binding _interlockMask.CoolantFlowEnabled, Mode=TwoWay}"
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.CoolantFlowEnabled, Mode=TwoWay}"
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding _interlockStatus.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.coolantFlowStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.coolantFlowStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- COOLANT TEMP -->
@@ -428,14 +428,14 @@
                                             <TextBlock Text="Coolant Temp" 
                                                        Width="120"
                                                        VerticalAlignment="Bottom"/>
-                                            <ToggleSwitch IsOn="{Binding _interlockMask.CoolantTempEnabled, Mode=TwoWay}"
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.CoolantTempEnabled, Mode=TwoWay}"
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding _interlockStatus.coolantTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.coolantTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.coolantTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.coolantTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- DOOR -->
@@ -443,14 +443,14 @@
                                             <TextBlock Text="Door" 
                                                        Width="120"
                                                        VerticalAlignment="Bottom"/>
-                                            <ToggleSwitch IsOn="{Binding _interlockMask.DoorEnabled, Mode=TwoWay}"
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.DoorEnabled, Mode=TwoWay}"
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding _interlockStatus.DoorStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.DoorStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.DoorStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.DoorStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- COVER -->
@@ -458,14 +458,14 @@
                                             <TextBlock Text="Cover" 
                                                        Width="120"
                                                        VerticalAlignment="Bottom"/>
-                                            <ToggleSwitch IsOn="{Binding _interlockMask.CoverEnabled, Mode=TwoWay}"
+                                            <ToggleSwitch IsOn="{Binding InterlockMask.CoverEnabled, Mode=TwoWay}"
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding _interlockStatus.CoverStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.CoverStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.CoverStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.CoverStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- DUMP TEMP -->
@@ -473,10 +473,10 @@
                                             <TextBlock Text="Dump Temp" 
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="{Binding _interlockStatus.DumpTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.DumpTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.DumpTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.DumpTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- CHARGER OVER VOLT -->
@@ -484,10 +484,10 @@
                                             <TextBlock Text="Charger Over Volt"
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="{Binding _interlockStatus.ChargerOverVoltageStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
+                                            <TextBlock Text="{Binding InterlockStatus.ChargerOverVoltageStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.ChargerOverVoltageStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.ChargerOverVoltageStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- CHARGER OVER TEMP -->
@@ -495,16 +495,15 @@
                                             <TextBlock Text="Charger Over Temp"  
                                                        Width="279"
                                                        VerticalAlignment="Bottom"/>
-                                            <TextBlock Text="{Binding _interlockStatus.ChargerOverTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
+                                            <TextBlock Text="{Binding InterlockStatus.ChargerOverTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding _interlockStatus.ChargerOverTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.ChargerOverTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
-
 
                         <!-- Soft Start Configuration -->
                         <Border Style="{StaticResource DataCardStyle}">

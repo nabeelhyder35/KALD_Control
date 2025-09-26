@@ -17,13 +17,6 @@ namespace KALD_Control.ViewModels
 {
     public class MainViewModel : ObservableObject, IDisposable
     {
-        public InterlockMask _interlockMask { get; set; }
-
-        public MainViewModel()
-        {
-            _interlockMask = new InterlockMask(this);
-        }
-
         private readonly DeviceManager _deviceManager;
         private readonly ILogger<MainViewModel> _logger;
         private readonly DispatcherQueue _dispatcherQueue;
@@ -38,8 +31,21 @@ namespace KALD_Control.ViewModels
         private DateTime _lastCommandTime = DateTime.MinValue;
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
 
-        public InterlockStatus _interlockStatus { get; set; } = new InterlockStatus();
-        //public InterlockMask _interlockMask { get; set; } = new InterlockMask(this);
+        // Interlock properties - properly exposed with property change notifications
+        private InterlockStatus _interlockStatus = new InterlockStatus();
+        private InterlockMask _interlockMask;
+
+        public InterlockStatus InterlockStatus
+        {
+            get => _interlockStatus;
+            set => SetProperty(ref _interlockStatus, value);
+        }
+
+        public InterlockMask InterlockMask
+        {
+            get => _interlockMask;
+            set => SetProperty(ref _interlockMask, value);
+        }
 
         private ushort _frequencySetpoint = 100;
         private ushort _pulseWidth = 100;
@@ -208,7 +214,6 @@ namespace KALD_Control.ViewModels
         public ICommand DisarmCommand { get; }
         public ICommand FireCommand { get; }
         public ICommand ApplySettingsCommand { get; }
-        //public ICommand intmaskCommand { get; }
 
         public MainViewModel(DeviceManager deviceManager, ILogger<MainViewModel> logger, DispatcherQueue dispatcherQueue)
         {
@@ -216,11 +221,14 @@ namespace KALD_Control.ViewModels
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
 
+            // Initialize interlock mask with reference to this viewmodel
+            _interlockMask = new InterlockMask(this);
+
             ConnectCommand = new RelayCommand(ExecuteConnect, () => !IsConnected && !string.IsNullOrEmpty(SelectedPort));
             DisconnectCommand = new RelayCommand(ExecuteDisconnect, () => IsConnected);
             RefreshPortsCommand = new RelayCommand(ExecuteRefreshPorts);
             ApplyPulseSettingsCommand = new RelayCommand(ExecuteApplyPulseSettings, () => CanSendCommand());
-            //SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => CanSendCommand());
+            SendInterlockMaskCommand = new RelayCommand(ExecuteSendInterlockMask, () => CanSendCommand());
             SendLaserDelaysCommand = new RelayCommand(ExecuteSendLaserDelays, () => CanSendCommand());
             ApplyShutterSettingsCommand = new RelayCommand(ExecuteApplyShutterSettings, () => CanSendCommand());
             ApplySoftStartCommand = new RelayCommand(ExecuteApplySoftStart, () => CanSendCommand());
@@ -237,7 +245,6 @@ namespace KALD_Control.ViewModels
             DisarmCommand = new RelayCommand(ExecuteDisarm, () => CanSendCommand());
             FireCommand = new RelayCommand(ExecuteFire, () => CanSendCommand());
             ApplySettingsCommand = new RelayCommand(ExecuteApplySettings, () => CanSendCommand());
-            //intmaskCommand = new RelayCommand(ExecuteIntMaskUpdated, () => CanSendCommand());
 
             _deviceManager.StateUpdated += OnStateUpdated;
             _deviceManager.RunStatusUpdated += OnRunStatusUpdated;
@@ -289,6 +296,14 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrVolts(VoltageSetpoint);
             _logger.LogInformation($"Applied voltage setting: {VoltageSetpoint}V");
+        }
+
+        private void ExecuteSendInterlockMask()
+        {
+            if (!CanSendCommand()) return;
+            _lastCommandTime = DateTime.Now;
+            _deviceManager.SendIntMask(_interlockMask.Mask);
+            _logger.LogInformation($"Sent interlock mask: 0x{_interlockMask.Mask:X2}");
         }
 
         private bool CanSendCommand()
@@ -466,7 +481,7 @@ namespace KALD_Control.ViewModels
             _dispatcherQueue.TryEnqueue(() =>
             {
                 _deviceManager.SendIntMask(_interlockMask.Mask);
-                _logger.LogInformation($"Interlock status updated: 0x{_interlockMask.Mask:X2}");
+                _logger.LogInformation($"Interlock mask updated: 0x{_interlockMask.Mask:X2}");
             });
         }
 
@@ -517,7 +532,7 @@ namespace KALD_Control.ViewModels
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                _interlockStatus.Status = status;
+                InterlockStatus.Status = status;
                 _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
             });
         }
@@ -652,7 +667,6 @@ namespace KALD_Control.ViewModels
                 ((RelayCommand)DisarmCommand)?.RaiseCanExecuteChanged();
                 ((RelayCommand)FireCommand)?.RaiseCanExecuteChanged();
                 ((RelayCommand)ApplySettingsCommand)?.RaiseCanExecuteChanged();
-                //((RelayCommand)intmaskCommand)?.RaiseCanExecuteChanged();
             });
         }
 
