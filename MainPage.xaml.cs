@@ -37,7 +37,10 @@ namespace KALD_Control
         {
             if (e.PropertyName == nameof(MainViewModel.LogText))
             {
-                LogScrollViewer?.ChangeView(null, LogScrollViewer.ScrollableHeight, null);
+                if (LogScrollViewer != null)
+                {
+                    LogScrollViewer.ChangeView(null, LogScrollViewer.ScrollableHeight, null);
+                }
             }
         }
 
@@ -60,7 +63,6 @@ namespace KALD_Control
 
         private void ToggleSwitch_Toggled(object sender, RoutedEventArgs e)
         {
-
         }
     }
 

@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using WinRT.Interop;
+using Windows.Graphics;
 
 namespace KALD_Control
 {
@@ -86,11 +87,29 @@ namespace KALD_Control
                 var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
                 _appWindow = AppWindow.GetFromWindowId(windowId);
 
-                // Set window properties
+                // Maximize the window to fill the screen's work area
                 if (_appWindow is not null)
                 {
-                    // Set minimum and default size
-                    _appWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+                    // Set to work area size to avoid covering taskbar
+                    var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Nearest);
+                    if (displayArea != null)
+                    {
+                        _appWindow.MoveAndResize(new Windows.Graphics.RectInt32
+                        {
+                            X = displayArea.WorkArea.X,
+                            Y = displayArea.WorkArea.Y,
+                            Width = displayArea.WorkArea.Width,
+                            Height = displayArea.WorkArea.Height
+                        });
+                    }
+                    else
+                    {
+                        // Fallback to maximize if DisplayArea fails
+                        if (_appWindow.Presenter is OverlappedPresenter presenter)
+                        {
+                            presenter.Maximize();
+                        }
+                    }
 
                     // Set title bar
                     var titleBar = _appWindow.TitleBar;
