@@ -307,7 +307,7 @@ namespace KALD_Control.Services
             };
             _deviceData.RunStatus = runStatus;
             SafeInvoke(() => RunStatusUpdated?.Invoke(this, runStatus));
-            Log($"Run status: Shots={runStatus.ShotCount}, State={runStatus.State}, Energy={runStatus.Energy}J");
+            Log($"Run status: Shots={runStatus.ShotCount}, State={runStatus.State}, Energy={runStatus.Energy}J, Power={runStatus.Power}W, Current={runStatus.Current}mA, VDroop={runStatus.VDroop}V");
         }
         private void HandleLsrIntStatus(byte[] data)
         {
@@ -415,7 +415,7 @@ namespace KALD_Control.Services
         {
             try
             {
-                Log($"Processing command {command} Data: {BitConverter.ToString(data).Replace("-", " ")}");
+                //Log($"Processing command {command} Data: {BitConverter.ToString(data).Replace("-", " ")}");
 
                 int expectedLength = GetCommandLength(command);
                 if (data?.Length != expectedLength)
@@ -536,7 +536,7 @@ namespace KALD_Control.Services
                 try
                 {
                     _lastByteReceived = DateTime.Now;
-                    Log($"Processing received data: {bytesRead} bytes, Hex: {BitConverter.ToString(data, 0, bytesRead).Replace("-", " ")}");
+                    //Log($"Processing received data: {bytesRead} bytes, Hex: {BitConverter.ToString(data, 0, bytesRead).Replace("-", " ")}");
 
                     // Add new data to buffer
                     _receiveBuffer.AddRange(data.Take(bytesRead));
@@ -553,7 +553,7 @@ namespace KALD_Control.Services
 
                         // Extract and process the complete packet
                         byte[] packet = _receiveBuffer.Take(packetEndIndex + 1).ToArray();
-                        Log($"Complete packet found: {BitConverter.ToString(packet).Replace("-", " ")}");
+                        //Log($"Complete packet found: {BitConverter.ToString(packet).Replace("-", " ")}");
                         _receiveBuffer.RemoveRange(0, packetEndIndex + 1);
 
                         ProcessCompletePacket(packet);
@@ -598,14 +598,14 @@ namespace KALD_Control.Services
         {
             try
             {
-                Log($"Processing complete packet: {BitConverter.ToString(packet).Replace("-", " ")}");
+                Log($"Rx Command: {BitConverter.ToString(packet).Replace("-", " ")}");
                 var validationResult = CommunicationHelper.ValidatePacket(packet);
 
                 if (validationResult == PacketValidationResult.Valid)
                 {
                     if (CommunicationHelper.ExtractPacketData(packet, out byte command, out byte[] data))
                     {
-                        Log($"Packet validated successfully. Command: {(uiRxCommand)command} (0x{command:X2}), Data: {BitConverter.ToString(data).Replace("-", " ")}");
+                        //Log($"Packet validated successfully. Command: {(uiRxCommand)command} (0x{command:X2}), Data: {BitConverter.ToString(data).Replace("-", " ")}");
                         // Process on background thread to avoid blocking serial port
                         Task.Run(() => ProcessPacket((uiRxCommand)command, data));
                     }

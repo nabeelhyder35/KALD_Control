@@ -381,8 +381,7 @@ namespace KALD_Control.Models
     {
         public const byte STX = 0x2A;    // Start of Text
         public const byte ETX = 0x3A;    // End of Text
-        public const int HEADER_LENGTH = 5; // STX(1) + Length(2) + Command(1) + Checksum(1)
-        public const int MIN_PACKET_LENGTH = HEADER_LENGTH + 1; // Minimum packet length (including ETX)
+        public const int MIN_PACKET_LENGTH = 1+2+1+1+1+1; // STX(1) + Length(2) + Command(1) + Data(1) + Checksum(1) + ETX(1)
     }
 
     /// <summary>
@@ -631,7 +630,7 @@ namespace KALD_Control.Models
                 return PacketValidationResult.ChecksumMismatch;
             }
 
-            Log($"Packet validated: Length={lengthField}, Checksum=0x{receivedChecksum:X2}");
+            //Log($"Packet validated: Length={lengthField}, Checksum=0x{receivedChecksum:X2}");
             return PacketValidationResult.Valid;
         }
 
@@ -868,27 +867,6 @@ namespace KALD_Control.Models
     /// </summary>
     public class DeviceData : ObservableObject
     {
-        private LaserStateType _systemState;
-        public LaserStateType SystemState
-        {
-            get => _systemState;
-            set => SetProperty(ref _systemState, value);
-        }
-
-        private LaserStateType _nextState;
-        public LaserStateType NextState
-        {
-            get => _nextState;
-            set => SetProperty(ref _nextState, value);
-        }
-
-        private LaserStateType _lastState;
-        public LaserStateType LastState
-        {
-            get => _lastState;
-            set => SetProperty(ref _lastState, value);
-        }
-
         private LaserStateType _laserState;
         public LaserStateType LaserState
         {
@@ -1092,14 +1070,6 @@ namespace KALD_Control.Models
             {
                 if (SetProperty(ref _outputStates, value))
                 {
-                    //OnPropertyChanged(nameof(Output0));
-                    //OnPropertyChanged(nameof(Output1));
-                    //OnPropertyChanged(nameof(Output2));
-                    //OnPropertyChanged(nameof(Output3));
-                    //OnPropertyChanged(nameof(Output4));
-                    //OnPropertyChanged(nameof(Output5));
-                    //OnPropertyChanged(nameof(Output6));
-                    //OnPropertyChanged(nameof(Output7));
                     OnPropertyChanged(nameof(ShutterOpen));
                     OnPropertyChanged(nameof(CoolerOn));
                     OnPropertyChanged(nameof(HVEnabled));
