@@ -493,14 +493,36 @@ namespace KALD_Control.ViewModels
             _deviceManager.SendLsrChargeCancel();
             _logger.LogInformation("Sent stop command");
         }
+        // Replace this property setter in MainViewModel
+        public LaserStateType CurrentLaserState
+        {
+            get => DeviceData.LaserState;
+            set
+            {
+                if (DeviceData.LaserState != value)
+                {
+                    DeviceData.LaserState = value;
+                    OnPropertyChanged(nameof(CurrentLaserState));
+                }
+            }
+        }
+        // Add this property to check if binding is working
+        public string DebugLaserState => $"Debug: {DeviceData.LaserState} at {DateTime.Now:HH:mm:ss.fff}";
 
+        // Then in your event handler, after updating:
         private void OnStateUpdated(object sender, LaserStateType state)
         {
-            _dispatcherQueue.TryEnqueue(() =>
+            try
             {
+                // Instead of using 'with' (which is only for records), set the property directly:
                 DeviceData.LaserState = state;
-                _logger.LogInformation($"Laser state updated: {state}");
-            });
+                OnPropertyChanged(nameof(DebugLaserState)); // Force debug update
+                _logger.LogInformation($"Laser state updated: {state}, Debug: {DebugLaserState}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in OnStateUpdated: {ex.Message}");
+            }
         }
 
         private void OnRunStatusUpdated(object sender, RunStatusData runStatus)

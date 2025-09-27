@@ -871,7 +871,13 @@ namespace KALD_Control.Models
         public LaserStateType LaserState
         {
             get => _laserState;
-            set => SetProperty(ref _laserState, value);
+            set
+            {
+                if (SetProperty(ref _laserState, value))
+                {
+                    System.Diagnostics.Debug.WriteLine($"LaserState changed to: {value}");
+                }
+            }
         }
 
         private ushort _setVoltage;

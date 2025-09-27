@@ -167,14 +167,16 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
+                       
                         <!-- System State -->
                         <StackPanel Grid.Column="0">
+
                             <TextBlock Text="System State" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <Border Width="16" Height="16" CornerRadius="8" Margin="0,0,8,0"
-                                        Background="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
-                                <TextBlock Text="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
-                                           FontSize="18" FontWeight="SemiBold"/>
+                Background="{Binding CurrentLaserState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
+                                <TextBlock Text="{Binding CurrentLaserState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
+                   FontSize="18" FontWeight="SemiBold"/>
                             </StackPanel>
                         </StackPanel>
 
