@@ -32,19 +32,12 @@ namespace KALD_Control.ViewModels
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
 
         // Interlock properties - properly exposed with property change notifications
-        private InterlockStatus _interlockStatus = new InterlockStatus();
-        private InterlockMask _interlockMask;
+        private InterlockClass _interlockObj;
 
-        public InterlockStatus InterlockStatus
+        public InterlockClass InterlockObj
         {
-            get => _interlockStatus;
-            set => SetProperty(ref _interlockStatus, value);
-        }
-
-        public InterlockMask InterlockMask
-        {
-            get => _interlockMask;
-            set => SetProperty(ref _interlockMask, value);
+            get => _interlockObj;
+            set => SetProperty(ref _interlockObj, value);
         }
 
         private ushort _frequencySetpoint = 100;
@@ -222,7 +215,7 @@ namespace KALD_Control.ViewModels
             _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
 
             // Initialize interlock mask with reference to this viewmodel
-            _interlockMask = new InterlockMask(this);
+            _interlockObj = new InterlockClass(this);
 
             ConnectCommand = new RelayCommand(ExecuteConnect, () => !IsConnected && !string.IsNullOrEmpty(SelectedPort));
             DisconnectCommand = new RelayCommand(ExecuteDisconnect, () => IsConnected);
@@ -302,8 +295,8 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendIntMask(_interlockMask.Mask);
-            _logger.LogInformation($"Sent interlock mask: 0x{_interlockMask.Mask:X2}");
+            _deviceManager.SendIntMask(_interlockObj.Mask);
+            _logger.LogInformation($"Sent interlock mask: 0x{_interlockObj.Mask:X2}");
         }
 
         private bool CanSendCommand()
@@ -480,8 +473,8 @@ namespace KALD_Control.ViewModels
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                _deviceManager.SendIntMask(_interlockMask.Mask);
-                _logger.LogInformation($"Interlock mask updated: 0x{_interlockMask.Mask:X2}");
+                _deviceManager.SendIntMask(_interlockObj.Mask);
+                _logger.LogInformation($"Interlock mask updated: 0x{_interlockObj.Mask:X2}");
             });
         }
 
@@ -532,7 +525,7 @@ namespace KALD_Control.ViewModels
         {
             _dispatcherQueue.TryEnqueue(() =>
             {
-                InterlockStatus.Status = status;
+                _interlockObj.Status = status;
                 _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
             });
         }

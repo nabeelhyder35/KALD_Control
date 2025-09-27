@@ -311,13 +311,9 @@ namespace KALD_Control.Services
         }
         private void HandleLsrIntStatus(byte[] data)
         {
-            InterlockStatus status = new InterlockStatus { };
-            status.Status = data[0];
             SafeInvoke(() =>
             {
-                IntStatusUpdated?.Invoke(this, status.Status);
-                Log($"IntStatusUpdated Method Invoked");
-                //DigitalIOUpdated?.Invoke(this, digitalIO);
+                IntStatusUpdated?.Invoke(this, data[0]);
             });
             Log($"Interlock status: 0x{data[0]:X2}");
         }

@@ -37,7 +37,7 @@ namespace KALD_Control.Models
     /// Each bit in the status/mask byte represents a specific interlock condition.
     /// A bit value of 0 indicates the condition is OK, while 1 indicates a fault.
     /// </summary>
-    public class InterlockStatus : ObservableObject
+    public class InterlockClass : ObservableObject
     {
         private byte _status = 0x00;
 
@@ -83,13 +83,17 @@ namespace KALD_Control.Models
                 OnPropertyChanged(nameof(DumpTempStatus));
                 OnPropertyChanged(nameof(ChargerOverVoltageStatus));
                 OnPropertyChanged(nameof(ChargerOverTempStatus));
+
+                // IMPORTANT: Notify combined properties when status changes
+                OnPropertyChanged(nameof(CoolantFlowCombined));
+                OnPropertyChanged(nameof(CoolantTempCombined));
+                OnPropertyChanged(nameof(DoorCombined));
+                OnPropertyChanged(nameof(CoverCombined));
             }
         }
-    }
-    public class InterlockMask : ObservableObject
-    {
+
         private readonly MainViewModel _viewModel;
-        public InterlockMask(MainViewModel viewModel)
+        public InterlockClass(MainViewModel viewModel)
         {
             _viewModel = viewModel;
         }
@@ -115,6 +119,7 @@ namespace KALD_Control.Models
                 {
                     _coolantFlowEnabled = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoolantFlowCombined)); // Notify combined property
                     OnMaskChanged();
                 }
             }
@@ -128,6 +133,7 @@ namespace KALD_Control.Models
                 {
                     _coolantTempEnabled = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoolantTempCombined)); // Notify combined property
                     OnMaskChanged();
                 }
             }
@@ -141,6 +147,7 @@ namespace KALD_Control.Models
                 {
                     _doorEnabled = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(DoorCombined)); // Notify combined property
                     OnMaskChanged();
                 }
             }
@@ -155,6 +162,7 @@ namespace KALD_Control.Models
                 {
                     _coverEnabled = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoverCombined)); // Notify combined property
                     OnMaskChanged();
                 }
             }
@@ -176,6 +184,13 @@ namespace KALD_Control.Models
         {
             _viewModel?.ExecuteIntMaskUpdated();
         }
+
+
+        // Combined property that returns array for converter
+        public bool[] CoolantFlowCombined => new bool[] { CoolantFlowEnabled, coolantFlowStatus };
+        public bool[] CoolantTempCombined => new bool[] { CoolantTempEnabled, coolantTempStatus };
+        public bool[] DoorCombined => new bool[] { DoorEnabled, DoorStatus };
+        public bool[] CoverCombined => new bool[] { CoverEnabled, CoverStatus };
     }
 
     /// <summary>

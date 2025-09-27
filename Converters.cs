@@ -27,6 +27,29 @@ namespace KALD_Control.Converters
         public object ConvertBack(object value, Type targetType, object parameter, string language)
             => throw new NotImplementedException();
     }
+    public class BoolArrayTo3ColorConverter : IValueConverter
+    {
+        public SolidColorBrush OkBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Green);
+        public SolidColorBrush FaultBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Red);
+        public SolidColorBrush DisabledBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Orange);
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            // Expect value to be an array of two bools: [enable, status]
+            if (value is bool[] boolArray && boolArray.Length == 2)
+            {
+                bool isEnabled = boolArray[0];
+                bool status = boolArray[1];
+                if (!isEnabled)
+                {
+                    return DisabledBrush;
+                }
+                return status ? OkBrush : FaultBrush;
+            }
+            return FaultBrush;
+        }
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+            => throw new NotImplementedException();
+    }
 
     /// <summary>
     /// Converts a boolean value to a Brush.
@@ -39,28 +62,6 @@ namespace KALD_Control.Converters
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             return value is bool boolValue && boolValue ? TrueBrush : FalseBrush;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    /// <summary>
-    /// Converts a boolean value to a string.
-    /// </summary>
-    public class BoolToStringConverter : IValueConverter
-    {
-        public string TrueText { get; set; } = "OK";
-        public string FalseText { get; set; } = "FAULT";
-
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            if (value is bool boolValue)
-                return boolValue ? TrueText : FalseText;
-
-            return FalseText;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
@@ -219,27 +220,6 @@ namespace KALD_Control.Converters
     }
 
     /// <summary>
-    /// Converts a boolean value to a brush based on interlock status.
-    /// </summary>
-    public class InterlockStatusToBrushConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            if (value is bool status)
-            {
-                return status ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 16, 124, 16)) :
-                               new SolidColorBrush(Windows.UI.Color.FromArgb(255, 209, 52, 56));
-            }
-            return new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 140, 0));
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    /// <summary>
     /// Converts a boolean value to "Yes" or "No".
     /// </summary>
     public class BoolToYesNoConverter : IValueConverter
@@ -263,6 +243,32 @@ namespace KALD_Control.Converters
             {
                 return boolValue ? "OK" : "FAULT";
             }
+            return "UNKNOWN";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    public class BoolToOkFaultDisabledConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            // Expect value to be an array of two bools: [enable, status]
+            if (value is bool[] boolArray && boolArray.Length == 2)
+            {
+                bool isEnabled = boolArray[0];
+                bool status = boolArray[1];
+
+                if (!isEnabled)
+                {
+                    return "DISABLED";
+                }
+
+                return status ? "OK" : "FAULT";
+            }
+
             return "UNKNOWN";
         }
 
