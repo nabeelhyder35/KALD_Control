@@ -30,8 +30,6 @@ namespace KALD_Control.ViewModels
         private bool _waveformEnabled = false;
         private DateTime _lastCommandTime = DateTime.MinValue;
         private readonly TimeSpan _commandDebounce = TimeSpan.FromMilliseconds(500);
-
-        // Interlock properties - properly exposed with property change notifications
         private InterlockStatus _interlockStatus = new InterlockStatus();
         private InterlockMask _interlockMask;
 
@@ -209,10 +207,10 @@ namespace KALD_Control.ViewModels
         public ICommand RequestWaveformCommand { get; }
         public ICommand ClearLogsCommand { get; }
         public ICommand DebugTestCommand { get; }
-        public ICommand StopCommand { get; }
         public ICommand ArmCommand { get; }
         public ICommand DisarmCommand { get; }
         public ICommand FireCommand { get; }
+        public ICommand StopCommand { get; }
         public ICommand ApplySettingsCommand { get; }
 
         public MainViewModel(DeviceManager deviceManager, ILogger<MainViewModel> logger, DispatcherQueue dispatcherQueue)
@@ -221,8 +219,13 @@ namespace KALD_Control.ViewModels
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dispatcherQueue = dispatcherQueue ?? throw new ArgumentNullException(nameof(dispatcherQueue));
 
-            // Initialize interlock mask with reference to this viewmodel
-            _interlockMask = new InterlockMask(this);
+            _interlockMask = new InterlockMask();
+            _interlockMask.MaskChanged += mask => _dispatcherQueue.TryEnqueue(() =>
+            {
+                _deviceManager.SendIntMask(mask);
+                _logger.LogInformation($"Interlock mask updated: 0x{mask:X2}");
+                Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
+            });
 
             ConnectCommand = new RelayCommand(ExecuteConnect, () => !IsConnected && !string.IsNullOrEmpty(SelectedPort));
             DisconnectCommand = new RelayCommand(ExecuteDisconnect, () => IsConnected);
@@ -241,9 +244,9 @@ namespace KALD_Control.ViewModels
             ClearLogsCommand = new RelayCommand(ExecuteClearLogs);
             DebugTestCommand = new RelayCommand(ExecuteDebugTest, () => CanSendCommand());
             StopCommand = new RelayCommand(ExecuteStop, () => CanSendCommand());
-            ArmCommand = new RelayCommand(ExecuteArm, () => CanSendCommand());
-            DisarmCommand = new RelayCommand(ExecuteDisarm, () => CanSendCommand());
-            FireCommand = new RelayCommand(ExecuteFire, () => CanSendCommand());
+            ArmCommand = new RelayCommand(ExecuteArm, CanExecuteArm);
+            DisarmCommand = new RelayCommand(ExecuteDisarm, CanExecuteDisarm);
+            FireCommand = new RelayCommand(ExecuteFire, CanExecuteFire);
             ApplySettingsCommand = new RelayCommand(ExecuteApplySettings, () => CanSendCommand());
 
             _deviceManager.StateUpdated += OnStateUpdated;
@@ -260,7 +263,6 @@ namespace KALD_Control.ViewModels
             _deviceManager.CommandError += OnCommandError;
             _deviceManager.ShotCountUpdated += OnShotCountUpdated;
             _deviceManager.DeviceDataUpdated += OnDeviceDataUpdated;
-
             _deviceManager.IntStatusUpdated += OnIntStatusUpdated;
 
             ExecuteRefreshPorts();
@@ -272,6 +274,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrState(LaserStateType.lsrArming);
             _logger.LogInformation("Sent arm command");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteDisarm()
@@ -280,6 +283,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrState(LaserStateType.lsrDisarming);
             _logger.LogInformation("Sent disarm command");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteFire()
@@ -288,6 +292,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrState(LaserStateType.lsrRunning);
             _logger.LogInformation("Sent fire command");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteApplySettings()
@@ -296,6 +301,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrVolts(VoltageSetpoint);
             _logger.LogInformation($"Applied voltage setting: {VoltageSetpoint}V");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteSendInterlockMask()
@@ -304,11 +310,12 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendIntMask(_interlockMask.Mask);
             _logger.LogInformation($"Sent interlock mask: 0x{_interlockMask.Mask:X2}");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private bool CanSendCommand()
         {
-            return DateTime.Now - _lastCommandTime >= _commandDebounce;
+            return IsConnected && DateTime.Now - _lastCommandTime >= _commandDebounce && InterlockStatus.Status == InterlockMask.Mask;
         }
 
         private void ExecuteConnect()
@@ -319,6 +326,8 @@ namespace KALD_Control.ViewModels
                 IsConnected = _deviceManager.IsConnected;
                 ConnectionStatus = IsConnected ? "Connected" : "Disconnected";
                 _logger.LogInformation($"Connected to {SelectedPort} at {SelectedBaudRate} baud");
+                // Send initial status request
+                ExecuteRequestStatus();
             }
             catch (Exception ex)
             {
@@ -372,6 +381,7 @@ namespace KALD_Control.ViewModels
 
             _deviceManager.SendLsrPulseConfig(pulseConfig);
             _logger.LogInformation("Sent pulse configuration");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteSendLaserDelays()
@@ -382,6 +392,7 @@ namespace KALD_Control.ViewModels
             ushort Delay2 = SetDelay2;
             _deviceManager.SendLsrDelays(Delay1, Delay2);
             _logger.LogInformation("Sent laser delays");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteApplyShutterSettings()
@@ -397,6 +408,7 @@ namespace KALD_Control.ViewModels
 
             _deviceManager.SendShutterConfig(shutterConfig);
             _logger.LogInformation("Sent shutter configuration");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteApplySoftStart()
@@ -413,22 +425,22 @@ namespace KALD_Control.ViewModels
 
             _deviceManager.SendSoftStartConfig(softStartConfig);
             _logger.LogInformation("Sent soft start configuration");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteRequestStatus()
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            _deviceManager.SendLsrState(LaserStateType.lsrIdle);
-            _logger.LogInformation("Requested laser status");
+            _deviceManager.SendCommand(uiTxCommand.uiTxLsrState, new byte[] { (byte)DeviceData.LaserState });
+            _logger.LogInformation($"Requested status for state: {DeviceData.LaserState}");
         }
 
         private void ExecuteReadEnergy()
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            // Placeholder: Adjust to actual command if available
-            _deviceManager.SendCommand(uiTxCommand.uiTxLsrState, new byte[] { 0x00 });
+            _deviceManager.SendCommand(uiTxCommand.uiTxLsrState, new byte[] { (byte)DeviceData.LaserState });
             _logger.LogInformation("Requested energy reading");
         }
 
@@ -436,8 +448,7 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            // Placeholder: Adjust to actual command if available
-            _deviceManager.SendCommand(uiTxCommand.uiTxLsrState, new byte[] { 0x00 });
+            _deviceManager.SendCommand(uiTxCommand.uiTxLsrState, new byte[] { (byte)DeviceData.LaserState });
             _logger.LogInformation("Requested temperature reading");
         }
 
@@ -445,7 +456,6 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            // Placeholder: Adjust to actual command if available
             _deviceManager.SendCommand(uiTxCommand.uiTxLsrCal, new byte[] { 0x00, 0x00 });
             _logger.LogInformation("Requested system info");
         }
@@ -454,9 +464,9 @@ namespace KALD_Control.ViewModels
         {
             if (!CanSendCommand()) return;
             _lastCommandTime = DateTime.Now;
-            // Placeholder: Adjust to actual command if available
             _deviceManager.SendLsrChargeCancel();
             _logger.LogInformation("Sent system reset command");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteRequestWaveform()
@@ -465,6 +475,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendWaveState(WaveformEnabled);
             _logger.LogInformation("Requested waveform data");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void ExecuteClearLogs()
@@ -473,15 +484,6 @@ namespace KALD_Control.ViewModels
             {
                 LogText = "";
                 _logger.LogInformation("Cleared logs");
-            });
-        }
-
-        public void ExecuteIntMaskUpdated()
-        {
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                _deviceManager.SendIntMask(_interlockMask.Mask);
-                _logger.LogInformation($"Interlock mask updated: 0x{_interlockMask.Mask:X2}");
             });
         }
 
@@ -499,6 +501,7 @@ namespace KALD_Control.ViewModels
             _lastCommandTime = DateTime.Now;
             _deviceManager.SendLsrChargeCancel();
             _logger.LogInformation("Sent stop command");
+            Task.Delay(100).ContinueWith(_ => ExecuteRequestStatus());
         }
 
         private void OnStateUpdated(object sender, LaserStateType state)
@@ -507,6 +510,7 @@ namespace KALD_Control.ViewModels
             {
                 DeviceData.LaserState = state;
                 _logger.LogInformation($"Laser state updated: {state}");
+                UpdateCommandStates();
             });
         }
 
@@ -515,7 +519,8 @@ namespace KALD_Control.ViewModels
             _dispatcherQueue.TryEnqueue(() =>
             {
                 DeviceData.RunStatus = runStatus;
-                _logger.LogInformation($"Run status updated: ShotCount={runStatus.ShotCount}, State={runStatus.State}");
+                _logger.LogInformation($"Run status updated: ShotCount={runStatus.ShotCount}, State={runStatus.State}, Energy={runStatus.Energy}");
+                UpdateCommandStates();
             });
         }
 
@@ -534,6 +539,7 @@ namespace KALD_Control.ViewModels
             {
                 InterlockStatus.Status = status;
                 _logger.LogInformation($"Interlock status updated: 0x{status:X2}");
+                UpdateCommandStates();
             });
         }
 
@@ -593,11 +599,10 @@ namespace KALD_Control.ViewModels
 
         private void OnDigitalIOUpdated(object sender, DigitalIOState digitalIO)
         {
-            //_dispatcherQueue.TryEnqueue(() =>
-            //{
-            //    DigitalIO = digitalIO;
-            //    _logger.LogInformation($"Digital I/O updated: InputStates=0x{digitalIO.InputStates:X8}, OutputStates=0x{digitalIO.OutputStates:X8}");
-            //});
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _logger.LogInformation($"Digital I/O updated: InputStates=0x{digitalIO.InputStates:X8}, OutputStates=0x{digitalIO.OutputStates:X8}");
+            });
         }
 
         private void OnPulseConfigUpdated(object sender, PulseConfig pulseConfig)
@@ -643,6 +648,7 @@ namespace KALD_Control.ViewModels
                 }
             });
         }
+
         private void UpdateCommandStates()
         {
             _dispatcherQueue.TryEnqueue(() =>
@@ -675,6 +681,7 @@ namespace KALD_Control.ViewModels
             if (_disposed) return;
             _disposed = true;
 
+            _interlockMask.MaskChanged -= null; // Unsubscribe to avoid memory leaks
             _deviceManager.StateUpdated -= OnStateUpdated;
             _deviceManager.RunStatusUpdated -= OnRunStatusUpdated;
             _deviceManager.LogMessage -= OnLogMessage;
@@ -696,6 +703,21 @@ namespace KALD_Control.ViewModels
                 _deviceManager.Disconnect();
             }
             _logger.LogInformation("MainViewModel disposed");
+        }
+
+        private bool CanExecuteArm()
+        {
+            return IsConnected && DeviceData.LaserState != LaserStateType.lsrArming && DeviceData.LaserState != LaserStateType.lsrArmed && DeviceData.LaserState != LaserStateType.lsrRunning && InterlockStatus.Status == InterlockMask.Mask;
+        }
+
+        private bool CanExecuteDisarm()
+        {
+            return IsConnected && (DeviceData.LaserState == LaserStateType.lsrArming || DeviceData.LaserState == LaserStateType.lsrArmed || DeviceData.LaserState == LaserStateType.lsrRunning);
+        }
+
+        private bool CanExecuteFire()
+        {
+            return IsConnected && DeviceData.LaserState == LaserStateType.lsrArmed && InterlockStatus.Status == InterlockMask.Mask;
         }
     }
 
@@ -722,3 +744,6 @@ namespace KALD_Control.ViewModels
         }
     }
 }
+
+
+//14:20

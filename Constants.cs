@@ -1,4 +1,5 @@
-﻿namespace KALD_Control
+﻿// Constants.cs - Unchanged, but added more constants for validation
+namespace KALD_Control
 {
     public static class Constants
     {
@@ -28,5 +29,9 @@
 
         // Digital output channels
         public const int HvSupplyChannel = 16;
+
+        // Added for protocol
+        public const byte STX = 0x2A;
+        public const byte ETX = 0x3A;
     }
 }

@@ -417,10 +417,10 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding InterlockStatus.coolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.CoolantFlowStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding InterlockStatus.coolantFlowStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.CoolantFlowStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- COOLANT TEMP -->
@@ -432,10 +432,10 @@
                                                           OffContent="Disabled" 
                                                           OnContent="Enabled"
                                                           Height="30"/>
-                                            <TextBlock Text="{Binding InterlockStatus.coolantTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                            <TextBlock Text="{Binding InterlockStatus.CoolantTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
                                                        Width="100"
                                                        VerticalAlignment="Bottom"
-                                                       Foreground="{Binding InterlockStatus.coolantTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                                       Foreground="{Binding InterlockStatus.CoolantTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
                                         </StackPanel>
 
                                         <!-- DOOR -->

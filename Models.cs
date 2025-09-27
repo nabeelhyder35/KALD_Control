@@ -42,11 +42,11 @@ namespace KALD_Control.Models
         private byte _status = 0x00;
 
         // Status properties: true if the interlock condition is OK (bit is 0), false if faulted (bit is 1)
-        public bool coolantFlowStatus
+        public bool CoolantFlowStatus
         {
             get => (_status & 0x01) == 0;
         }
-        public bool coolantTempStatus
+        public bool CoolantTempStatus
         {
             get => (_status & 0x02) == 0;
         }
@@ -66,7 +66,7 @@ namespace KALD_Control.Models
         {
             get => (_status & 0x20) == 0;
         }
-        public bool ChargerOverTempStatus { 
+        public bool ChargerOverTempStatus {
             get => (_status & 0x40) == 0;
         }
         public byte Status
@@ -76,8 +76,8 @@ namespace KALD_Control.Models
             {
                 _status = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(coolantFlowStatus));
-                OnPropertyChanged(nameof(coolantTempStatus));
+                OnPropertyChanged(nameof(CoolantFlowStatus));
+                OnPropertyChanged(nameof(CoolantTempStatus));
                 OnPropertyChanged(nameof(DoorStatus));
                 OnPropertyChanged(nameof(CoverStatus));
                 OnPropertyChanged(nameof(DumpTempStatus));
@@ -88,22 +88,13 @@ namespace KALD_Control.Models
     }
     public class InterlockMask : ObservableObject
     {
-        private readonly MainViewModel _viewModel;
-        public InterlockMask(MainViewModel viewModel)
-        {
-            _viewModel = viewModel;
-        }
-
         private bool _coolantFlowEnabled = true;
         private bool _coolantTempEnabled = true;
         private bool _doorEnabled = true;
         private bool _coverEnabled = true;
 
-        // Event or Action to notify when mask changes
-        public event Action<byte> MaskChanged;
-        // Or if you prefer a direct method call:
-        private Action<byte> _onMaskChanged;
-
+        // Event to notify when mask changes
+        public event Action<byte>? MaskChanged;
 
         // Mask properties: true if the interlock condition is enabled (bit is 1), false if disabled (bit is 0)
         public bool CoolantFlowEnabled
@@ -174,7 +165,7 @@ namespace KALD_Control.Models
 
         private void OnMaskChanged()
         {
-            _viewModel?.ExecuteIntMaskUpdated();
+            MaskChanged?.Invoke(Mask);
         }
     }
 
@@ -444,8 +435,6 @@ namespace KALD_Control.Models
         CapVoltageSet = 0,
         Reserved1 = 1
     }
-
-  
 
     /// <summary>
     /// Commands RECEIVED from FPGA (FPGA → GUI)
@@ -1062,6 +1051,20 @@ namespace KALD_Control.Models
             get => _pulseConfig;
             set => SetProperty(ref _pulseConfig, value);
         }
+
+        private InterlockStatus _interlockStatus = new InterlockStatus();
+        public InterlockStatus InterlockStatus
+        {
+            get => _interlockStatus;
+            set => SetProperty(ref _interlockStatus, value);
+        }
+
+        private byte _interlockMask;
+        public byte InterlockMask
+        {
+            get => _interlockMask;
+            set => SetProperty(ref _interlockMask, value);
+        }
     }
 
     /// <summary>
@@ -1069,6 +1072,13 @@ namespace KALD_Control.Models
     /// </summary>
     public class DigitalIOState : ObservableObject
     {
+        private uint _inputStates;
+        public uint InputStates
+        {
+            get => _inputStates;
+            set => SetProperty(ref _inputStates, value);
+        }
+
         private uint _outputStates;
         public uint OutputStates
         {
@@ -1077,14 +1087,6 @@ namespace KALD_Control.Models
             {
                 if (SetProperty(ref _outputStates, value))
                 {
-                    //OnPropertyChanged(nameof(Output0));
-                    //OnPropertyChanged(nameof(Output1));
-                    //OnPropertyChanged(nameof(Output2));
-                    //OnPropertyChanged(nameof(Output3));
-                    //OnPropertyChanged(nameof(Output4));
-                    //OnPropertyChanged(nameof(Output5));
-                    //OnPropertyChanged(nameof(Output6));
-                    //OnPropertyChanged(nameof(Output7));
                     OnPropertyChanged(nameof(ShutterOpen));
                     OnPropertyChanged(nameof(CoolerOn));
                     OnPropertyChanged(nameof(HVEnabled));

@@ -1,20 +1,20 @@
-﻿// Converters.cs - A single file containing all value converter classes.
+﻿// Converters.cs - Fixed WaveformToStringConverter to handle ushort[] properly
+// - Added more converters if needed
+
 using KALD_Control.Models;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Linq;
 
 namespace KALD_Control.Converters
 {
-    /// <summary>
-    /// Converts a boolean value to a SolidColorBrush.
-    /// </summary>
     public class BoolToColorConverter : IValueConverter
     {
-        public SolidColorBrush TrueBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Green);
-        public SolidColorBrush FalseBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Red);
+        public SolidColorBrush TrueBrush { get; set; } = new SolidColorBrush(Colors.Green);
+        public SolidColorBrush FalseBrush { get; set; } = new SolidColorBrush(Colors.Red);
 
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -28,13 +28,10 @@ namespace KALD_Control.Converters
             => throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Converts a boolean value to a Brush.
-    /// </summary>
     public class BoolToBrushConverter : IValueConverter
     {
-        public Brush TrueBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Green);
-        public Brush FalseBrush { get; set; } = new SolidColorBrush(Microsoft.UI.Colors.Red);
+        public Brush TrueBrush { get; set; } = new SolidColorBrush(Colors.Green);
+        public Brush FalseBrush { get; set; } = new SolidColorBrush(Colors.Red);
 
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -47,9 +44,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to a string.
-    /// </summary>
     public class BoolToStringConverter : IValueConverter
     {
         public string TrueText { get; set; } = "OK";
@@ -69,9 +63,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to Visibility.
-    /// </summary>
     public class BoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -91,9 +82,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to GridLength.
-    /// </summary>
     public class BoolToGridLengthConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -107,9 +95,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to an expand/collapse icon.
-    /// </summary>
     public class ExpandCollapseIconConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -123,9 +108,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean connection state to a button's text.
-    /// </summary>
     public class ConnectionButtonTextConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -143,9 +125,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean connection state to status text.
-    /// </summary>
     public class ConnectionStatusConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -163,9 +142,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a numeric energy value to a formatted string.
-    /// </summary>
     public class EnergyToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -182,9 +158,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a numeric frequency value to a formatted string.
-    /// </summary>
     public class FrequencyConverter : IValueConverter
     {
         public string Format { get; set; } = "F1";
@@ -218,9 +191,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to a brush based on interlock status.
-    /// </summary>
     public class InterlockStatusToBrushConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -239,9 +209,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to "Yes" or "No".
-    /// </summary>
     public class BoolToYesNoConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -272,9 +239,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to the inverse visibility.
-    /// </summary>
     public class InverseBoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -294,9 +258,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a LaserStateType enum to a color.
-    /// </summary>
     public class LaserStateToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -321,9 +282,6 @@ namespace KALD_Control.Converters
             => throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Converts a LaserStateType enum to a string.
-    /// </summary>
     public class LaserStateToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -348,9 +306,6 @@ namespace KALD_Control.Converters
             => throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Converts a TimeSpan to a user-friendly string (e.g., "10m ago").
-    /// </summary>
     public class TimeSpanToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -384,9 +339,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a numeric value to a percentage.
-    /// </summary>
     public class ValueToPercentageConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -407,9 +359,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a numeric voltage value to a string.
-    /// </summary>
     public class VoltageToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -426,9 +375,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a boolean value to a waveform button's text.
-    /// </summary>
     public class WaveformButtonTextConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -446,16 +392,13 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a waveform samples array to a formatted string.
-    /// </summary>
     public class WaveformToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is ushort[] samples)
+            if (value is ushort[] samples && samples.Length > 0)
             {
-                return string.Join(", ", samples);
+                return string.Join(", ", samples.Take(10)) + (samples.Length > 10 ? " ..." : "");
             }
             return "No data";
         }
@@ -466,9 +409,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a TriggerModeType enum to a string.
-    /// </summary>
     public class TriggerModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -491,9 +431,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a ShotModeType enum to a string.
-    /// </summary>
     public class ShotModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -516,9 +453,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a ShutterModeType enum to a string.
-    /// </summary>
     public class ShutterModeToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
@@ -541,9 +475,6 @@ namespace KALD_Control.Converters
         }
     }
 
-    /// <summary>
-    /// Converts a ShutterStateType enum to a string.
-    /// </summary>
     public class ShutterStateToStringConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
