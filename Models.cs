@@ -44,30 +44,30 @@ namespace KALD_Control.Models
         // Status properties: true if the interlock condition is OK (bit is 0), false if faulted (bit is 1)
         public bool coolantFlowStatus
         {
-            get => (_status & 0x01) == 0;
+            get => (_status & 0x01) == 0x01;
         }
         public bool coolantTempStatus
         {
-            get => (_status & 0x02) == 0;
+            get => (_status & 0x02) == 0x02;
         }
         public bool DoorStatus
         {
-            get => (_status & 0x04) == 0;
+            get => (_status & 0x04) == 0x04;
         }
         public bool CoverStatus
         {
-            get => (_status & 0x08) == 0;
+            get => (_status & 0x08) == 0x08;
         }
         public bool DumpTempStatus
         {
-            get => (_status & 0x10) == 0;
+            get => (_status & 0x10) == 0x10;
         }
         public bool ChargerOverVoltageStatus
         {
-            get => (_status & 0x20) == 0;
+            get => (_status & 0x20) == 0x20;
         }
         public bool ChargerOverTempStatus { 
-            get => (_status & 0x40) == 0;
+            get => (_status & 0x40) == 0x40;
         }
         public byte Status
         {
