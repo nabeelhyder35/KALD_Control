@@ -29,7 +29,7 @@ namespace KALD_Control.Services
         private readonly TimeSpan _parserTimeout = TimeSpan.FromSeconds(5);
         private DeviceData _deviceData = new DeviceData();
         private readonly DispatcherQueue _dispatcherQueue;
-       
+
         // Event declarations for GUI notification
         public event EventHandler<LaserStateType> StateUpdated;
         public event EventHandler<PulseConfig> PulseConfigUpdated;
@@ -77,10 +77,10 @@ namespace KALD_Control.Services
 
         public byte[] ToBigEndian(ushort value) => new byte[] { (byte)(value >> 8), (byte)(value & 0xFF) };
         public byte[] ToBigEndian(uint value) => new byte[] { (byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)(value & 0xFF) };
-        
+
         /*---------------------------------------------------------------------------
-                 * UI FUNCTIONS
-        ----------------------------------------------------------------------------*/
+         * UI FUNCTIONS
+         ----------------------------------------------------------------------------*/
         private void SafeInvoke(Action action)
         {
             try
@@ -101,6 +101,7 @@ namespace KALD_Control.Services
                 }
                 else
                 {
+                    // Fallback to direct invocation if no dispatcher available
                     action();
                 }
             }
@@ -267,11 +268,7 @@ namespace KALD_Control.Services
         {
             var state = (LaserStateType)data[0];
             _deviceData.LaserState = state;
-            SafeInvoke(() =>
-            {
-                StateUpdated?.Invoke(this, state);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
-            });
+            SafeInvoke(() => StateUpdated?.Invoke(this, state));
             Log($"Laser state updated: {state}");
         }
         private void HandleLsrPulseConfig(byte[] data)
@@ -294,11 +291,7 @@ namespace KALD_Control.Services
         {
             var shotCount = (uint)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]);
             _deviceData.ShotCount = shotCount;
-            SafeInvoke(() =>
-            {
-                ShotCountUpdated?.Invoke(this, shotCount);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
-            });
+            SafeInvoke(() => ShotCountUpdated?.Invoke(this, shotCount));
             Log($"Shot count updated: {shotCount}");
         }
         private void HandleLsrRunStatus(byte[] data)
@@ -313,34 +306,32 @@ namespace KALD_Control.Services
                 VDroop = (ushort)((data[12] << 8) | data[13]),
             };
             _deviceData.RunStatus = runStatus;
-            _deviceData.LaserState = runStatus.State;
-            _deviceData.ShotCount = runStatus.ShotCount;
-            SafeInvoke(() =>
-            {
-                RunStatusUpdated?.Invoke(this, runStatus);
-                StateUpdated?.Invoke(this, runStatus.State);
-                ShotCountUpdated?.Invoke(this, runStatus.ShotCount);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
-            });
-            Log($"Run status: Shots={runStatus.ShotCount}, State={runStatus.State}, Energy={runStatus.Energy}J, Power={runStatus.Power}, Current={runStatus.Current}, VDroop={runStatus.VDroop}");
+            SafeInvoke(() => RunStatusUpdated?.Invoke(this, runStatus));
+            Log($"Run status: Shots={runStatus.ShotCount}, State={runStatus.State}, Energy={runStatus.Energy}J");
         }
         private void HandleLsrIntStatus(byte[] data)
         {
-            InterlockStatus status = new InterlockStatus { Status = data[0] };
-            _deviceData.InterlockStatus = status;
+            InterlockStatus status = new InterlockStatus { };
+            status.Status = data[0];
             SafeInvoke(() =>
             {
                 IntStatusUpdated?.Invoke(this, status.Status);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
+                Log($"IntStatusUpdated Method Invoked");
+                //DigitalIOUpdated?.Invoke(this, digitalIO);
             });
             Log($"Interlock status: 0x{data[0]:X2}");
         }
-
         private void HandleLsrIntMask(byte[] data)
         {
-            _deviceData.InterlockMask = data[0];
-            SafeInvoke(() => IntMaskUpdated?.Invoke(this, data[0]));
-            Log($"Interlock mask: 0x{data[0]:X2}");
+            byte mask = data[0];
+            //InterlockMask _interlockMask;
+            //if ()
+            //SafeInvoke(() =>
+            //{
+            //    IntMaskUpdated?.Invoke(this, data[0]);
+            //    Log($"IntMaskUpdated Method Invoked");
+            //});
+            //Log($"Interlock mask: 0x{data[0]:X2}");
         }
         private void HandleLsrWaveform(byte[] data)
         {
@@ -365,11 +356,7 @@ namespace KALD_Control.Services
         {
             var voltage = (ushort)((data[0] << 8) | data[1]);
             _deviceData.ActualVoltage = voltage;
-            SafeInvoke(() =>
-            {
-                VoltsUpdated?.Invoke(this, voltage);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
-            });
+            SafeInvoke(() => VoltsUpdated?.Invoke(this, voltage));
             Log($"Voltage updated: {voltage}V");
         }
         private void HandleLsrChargeState(byte[] data)
@@ -380,11 +367,7 @@ namespace KALD_Control.Services
                 ChargeDone = data[2] != 0
             };
             _deviceData.ChargeState = chargeState;
-            SafeInvoke(() =>
-            {
-                ChargeStateUpdated?.Invoke(this, chargeState);
-                DeviceDataUpdated?.Invoke(this, _deviceData);
-            });
+            SafeInvoke(() => ChargeStateUpdated?.Invoke(this, chargeState));
             Log($"Charge state: {chargeState.MeasuredVolts}V, Done={chargeState.ChargeDone}");
         }
         private void HandleLsrChargeVolts(byte[] data)
@@ -398,16 +381,14 @@ namespace KALD_Control.Services
                 }
 
                 ushort voltageSetpoint = (ushort)((data[0] << 8) | data[1]);
-                _deviceData.VoltageSetpoint = voltageSetpoint;
-                SafeInvoke(() =>
-                {
-                    DeviceDataUpdated?.Invoke(this, _deviceData);
-                });
                 Log($"Charge voltage setpoint: {voltageSetpoint}V");
+
+                _deviceData.VoltageSetpoint = voltageSetpoint;
+                SafeInvoke(() => DeviceDataUpdated?.Invoke(this, _deviceData));
             }
             catch (Exception ex)
             {
-                Log($"Error in HandleLsrChargeVolts: {ex.Message}");
+                Log($"Error in HandleChargeVoltage: {ex.GetType().Name}: {ex.Message}");
                 CommandError?.Invoke(this, ("uiRxLsrChargeVolts", ex));
             }
         }
@@ -447,6 +428,7 @@ namespace KALD_Control.Services
                     return;
                 }
 
+                // Use dispatcher for UI updates to ensure thread safety
                 SafeInvoke(() =>
                 {
                     try
@@ -646,7 +628,7 @@ namespace KALD_Control.Services
                 Log($"Error in ProcessCompletePacket: {ex.Message}, Packet: {BitConverter.ToString(packet).Replace("-", " ")}");
             }
         }
-
+        
         /*---------------------------------------------------------------------------
          * FUNCTIONS FOR SENDING COMMANDS (TX) 
          ----------------------------------------------------------------------------*/
@@ -693,12 +675,10 @@ namespace KALD_Control.Services
         {
             SendCommand(uiTxCommand.uiTxIntMask, new byte[] { mask });
         }
-
         public void SendWaveState(bool enabled)
         {
             SendCommand(uiTxCommand.uiTxWaveState, new byte[] { (byte)(enabled ? 1 : 0) });
         }
-
         public void SendLsrDelays(ushort delay1, ushort delay2)
         {
             byte[] data = new byte[4]
@@ -708,7 +688,6 @@ namespace KALD_Control.Services
             };
             SendCommand(uiTxCommand.uiTxLsrDelays, data);
         }
-
         public void SendLsrCal(ushort calValue)
         {
             byte[] data = new byte[2]
@@ -726,12 +705,10 @@ namespace KALD_Control.Services
             };
             SendCommand(uiTxCommand.uiTxLsrVolts, data);
         }
-
         public void SendLsrChargeCancel()
         {
             SendCommand(uiTxCommand.uiTxLsrChargeCancel, new byte[] { 0x00 });
         }
-
         public void SendShutterConfig(ShutterConfig config)
         {
             byte[] data = new byte[2]
@@ -741,7 +718,6 @@ namespace KALD_Control.Services
             };
             SendCommand(uiTxCommand.uiTxShutterConfig, data);
         }
-
         public void SendSoftStartConfig(SoftStartConfig config)
         {
             byte[] data = new byte[7]
@@ -776,6 +752,7 @@ namespace KALD_Control.Services
                     _serialPort.Write(packet, 0, packet.Length);
                     string hexData = BitConverter.ToString(data).Replace("-", " ");
                     Log($"SENT: {command} Data=[{hexData}]");
+                    // Small delay to prevent overwhelming the device
                     Thread.Sleep(50);
                 }
             }
@@ -785,9 +762,5 @@ namespace KALD_Control.Services
                 CommandError?.Invoke(this, (command.ToString(), ex));
             }
         }
-
-
     }
 }
-
-// 14:17 
