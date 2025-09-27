@@ -9,12 +9,17 @@
       mc:Ignorable="d">
 
     <Page.Resources>
-        <local:InterlockStatusConverter x:Key="InterlockStatusConverter"/>
-        <local:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:ChargeStateConverter x:Key="ChargeStateConverter"/>
+        <conv:BoolToYesNoConverter x:Key="BoolToYesNoConverter"/>
         <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
         <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>
         <conv:EnergyToStringConverter x:Key="EnergyToStringConverter"/>
+        <conv:WaveformToStringConverter x:Key="WaveformToStringConverter"/>
+        <conv:BoolToOkFaultConverter x:Key="BoolToOkFaultConverter"/>
+        <conv:BoolToOkFaultDisabledConverter x:Key="BoolToOkFaultDisabledConverter"/>
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <conv:BoolArrayTo3ColorConverter x:Key="BoolArrayTo3ColorConverter"/>
         <Style x:Key="DataCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
             <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
@@ -65,14 +70,12 @@
         </Style>
     </Page.Resources>
 
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="48"/>
-            <!-- Title bar -->
             <RowDefinition Height="*"/>
-            <!-- Main content -->
             <RowDefinition Height="300"/>
-            <!-- Log panel -->
         </Grid.RowDefinitions>
 
         <!-- Custom Title Bar -->
@@ -160,6 +163,8 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- System State -->
@@ -167,8 +172,8 @@
                             <TextBlock Text="System State" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <Border Width="16" Height="16" CornerRadius="8" Margin="0,0,8,0"
-                                        Background="{Binding DeviceData.SystemState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
-                                <TextBlock Text="{Binding DeviceData.SystemState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
+                                        Background="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToColorConverter}, Mode=OneWay}"/>
+                                <TextBlock Text="{Binding DeviceData.LaserState, Converter={StaticResource LaserStateToStringConverter}, Mode=OneWay}" 
                                            FontSize="18" FontWeight="SemiBold"/>
                             </StackPanel>
                         </StackPanel>
@@ -178,7 +183,7 @@
                             <TextBlock Text="Voltage" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="{Binding DeviceData.ActualVoltage, Mode=OneWay}" 
-                                           Style="{StaticResource MetricValueStyle}" FontSize="24"/>
+                                           Style="{StaticResource MetricValueStyle}"/>
                                 <TextBlock Text="V" Style="{StaticResource MetricUnitStyle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -187,8 +192,8 @@
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Energy" Style="{StaticResource SubheaderStyle}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="{Binding Energy, Converter={StaticResource EnergyToStringConverter}, Mode=OneWay}" 
-                                           Style="{StaticResource MetricValueStyle}" FontSize="24"/>
+                                <TextBlock Text="{Binding DeviceData.RunStatus.Energy, Converter={StaticResource EnergyToStringConverter}, Mode=OneWay}" 
+                                           Style="{StaticResource MetricValueStyle}"/>
                                 <TextBlock Text="J" Style="{StaticResource MetricUnitStyle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -197,7 +202,25 @@
                         <StackPanel Grid.Column="3">
                             <TextBlock Text="Shot Count" Style="{StaticResource SubheaderStyle}"/>
                             <TextBlock Text="{Binding DeviceData.ShotCount, Mode=OneWay}" 
-                                       Style="{StaticResource MetricValueStyle}" FontSize="24"/>
+                                       Style="{StaticResource MetricValueStyle}"/>
+                        </StackPanel>
+
+                        <!-- Charge Voltage -->
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Charge Voltage" Style="{StaticResource SubheaderStyle}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="{Binding DeviceData.ChargeState.MeasuredVolts, Mode=OneWay}" 
+                                           Style="{StaticResource MetricValueStyle}"/>
+                                <TextBlock Text="V" Style="{StaticResource MetricUnitStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Charge Done -->
+                        <StackPanel Grid.Column="5">
+                            <TextBlock Text="Charge Done" Style="{StaticResource SubheaderStyle}"/>
+                            <TextBlock Foreground="{Binding DeviceData.ChargeState.ChargeDone, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"
+                                       Text="{Binding DeviceData.ChargeState.ChargeDone, Converter={StaticResource BoolToYesNoConverter}, Mode=OneWay}" 
+                                       Style="{StaticResource MetricValueStyle}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -293,7 +316,7 @@
                                 <NumberBox Header="Voltage Setpoint (V)"
                                            Value="{Binding VoltageSetpoint, Mode=TwoWay}"
                                            Minimum="0"
-                                           Maximum="{x:Bind local:Constants.MaxVoltage}"
+                                           Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Voltage" 
                                         Command="{Binding ApplySettingsCommand}"
@@ -311,18 +334,18 @@
                                 <TextBlock Text="Pulse Configuration" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Frequency (Hz)"
                                            Value="{Binding FrequencySetpoint, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinFrequency}"
-                                           Maximum="{x:Bind local:Constants.MaxFrequency}"
+                                           Minimum="1"
+                                           Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Pulse Width (μs)"
                                            Value="{Binding PulseWidth, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinPulseWidth}"
-                                           Maximum="{x:Bind local:Constants.MaxPulseWidth}"
+                                           Minimum="1"
+                                           Maximum="10000"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Total Shots"
                                            Value="{Binding TotalShots, Mode=TwoWay}"
-                                           Minimum="{x:Bind local:Constants.MinTotalShots}"
-                                           Maximum="{x:Bind local:Constants.MaxTotalShots}"
+                                           Minimum="1"
+                                           Maximum="1000000"
                                            HorizontalAlignment="Stretch"/>
                                 <ComboBox Header="Trigger Mode"
                                           ItemsSource="{Binding TriggerModes}"
@@ -344,12 +367,12 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Laser Delays" Style="{StaticResource SectionHeaderStyle}"/>
                                 <NumberBox Header="Delay 1 (μs)"
-                                           Value="{Binding Delay1, Mode=TwoWay}"
+                                           Value="{Binding SetDelay1, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Delay 2 (μs)"
-                                           Value="{Binding Delay2, Mode=TwoWay}"
+                                           Value="{Binding SetDelay2, Mode=TwoWay}"
                                            Minimum="0"
                                            Maximum="65535"
                                            HorizontalAlignment="Stretch"/>
@@ -380,37 +403,108 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Right Panel: Status & Diagnostics -->
+                    <!-- Right Panel: Interlocks, Soft Start, Waveform -->
                     <StackPanel Grid.Column="2" Margin="8,0,0,0" Spacing="16">
-                        <!-- Interlock Status -->
+                        <!-- Interlocks Settings -->
                         <Border Style="{StaticResource DataCardStyle}">
                             <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal">
-                                    <FontIcon Glyph="&#xE72E;" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Safety Interlocks" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="Interlocks Status And Settings" Style="{StaticResource SectionHeaderStyle}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <StackPanel Spacing="2">
+                                        <!-- COOLANT FLOW -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Coolant Flow" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockObj.CoolantFlowEnabled, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="{Binding InterlockObj.CoolantFlowCombined, Converter={StaticResource BoolToOkFaultDisabledConverter}, Mode=OneWay}" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.CoolantFlowCombined, Converter={StaticResource BoolArrayTo3ColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- COOLANT TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Coolant Temp" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockObj.CoolantTempEnabled, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="{Binding InterlockObj.CoolantTempCombined, Converter={StaticResource BoolToOkFaultDisabledConverter}, ConverterParameter={Binding InterlockMask.CoolantTempEnabled}, Mode=OneWay}"
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.CoolantTempCombined, Converter={StaticResource BoolArrayTo3ColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- DOOR -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Door" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockObj.DoorEnabled, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="{Binding InterlockObj.DoorCombined, Converter={StaticResource BoolToOkFaultDisabledConverter}, Mode=OneWay}" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.DoorCombined, Converter={StaticResource BoolArrayTo3ColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- COVER -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="Cover" 
+                                                       Width="120"
+                                                       VerticalAlignment="Bottom"/>
+                                            <ToggleSwitch IsOn="{Binding InterlockObj.CoverEnabled, Mode=TwoWay}"
+                                                          OffContent="Disabled" 
+                                                          OnContent="Enabled"
+                                                          Height="30"/>
+                                            <TextBlock Text="{Binding InterlockObj.CoverCombined, Converter={StaticResource BoolToOkFaultDisabledConverter}, Mode=OneWay}" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.CoverCombined, Converter={StaticResource BoolArrayTo3ColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- DUMP TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Dump Temp" 
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="{Binding InterlockObj.DumpTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}" 
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.DumpTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- CHARGER OVER VOLT -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Charger Over Volt"
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="{Binding InterlockObj.ChargerOverVoltageStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.ChargerOverVoltageStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+
+                                        <!-- CHARGER OVER TEMP -->
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                                            <TextBlock Text="Charger Over Temp"  
+                                                       Width="279"
+                                                       VerticalAlignment="Bottom"/>
+                                            <TextBlock Text="{Binding InterlockObj.ChargerOverTempStatus, Converter={StaticResource BoolToOkFaultConverter}, Mode=OneWay}"
+                                                       Width="100"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding InterlockObj.ChargerOverTempStatus, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="Power OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.PowerOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Temperature OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.TempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Door OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.DoorOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Water OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.WaterOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Cover OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.CoverOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Discharge Temp OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.DischargeTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Over Voltage OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.OverVoltageOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                    <TextBlock Text="Over Temp OK" FontSize="14"
-                                               Foreground="{Binding InterlockStatus.OverTempOK, Converter={StaticResource BoolToColorConverter}, Mode=OneWay}"/>
-                                </StackPanel>
-                                <Button Content="Update Interlock Mask" 
-                                        Command="{Binding SendInterlockMaskCommand}"
-                                        Style="{StaticResource SecondaryButtonStyle}"
-                                        HorizontalAlignment="Stretch"/>
                             </StackPanel>
                         </Border>
 
@@ -423,11 +517,11 @@
                                 <NumberBox Header="Idle Setpoint (V)"
                                            Value="{Binding IdleSetpoint, Mode=TwoWay}"
                                            Minimum="0"
-                                           Maximum="{x:Bind local:Constants.MaxVoltage}"
+                                           Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <NumberBox Header="Ramp Count"
                                            Value="{Binding RampCount, Mode=TwoWay}"
-                                           Minimum="1"
+                                           Minimum="0"
                                            Maximum="1000"
                                            HorizontalAlignment="Stretch"/>
                                 <Button Content="Apply Soft Start" 
@@ -437,57 +531,21 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- System Commands -->
-                        <Border Style="{StaticResource DataCardStyle}">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="System Commands" Style="{StaticResource SectionHeaderStyle}"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Button Grid.Column="0" Grid.Row="0"
-                                            Content="Status" 
-                                            Command="{Binding RequestStatusCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Margin="0,0,2,2"/>
-                                    <Button Grid.Column="1" Grid.Row="0"
-                                            Content="Energy" 
-                                            Command="{Binding ReadEnergyCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Margin="2,0,0,2"/>
-                                    <Button Grid.Column="0" Grid.Row="1"
-                                            Content="Temp" 
-                                            Command="{Binding ReadTemperatureCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Margin="0,2,2,0"/>
-                                    <Button Grid.Column="1" Grid.Row="1"
-                                            Content="Info" 
-                                            Command="{Binding SystemInfoCommand}"
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Margin="2,2,0,0"/>
-                                </Grid>
-                                <Button Content="System Reset" 
-                                        Command="{Binding SystemResetCommand}"
-                                        Style="{StaticResource DangerButtonStyle}"
-                                        HorizontalAlignment="Stretch"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Waveform Control -->
+                        <!-- Waveform Analysis -->
                         <Border Style="{StaticResource DataCardStyle}">
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Waveform Analysis" Style="{StaticResource SectionHeaderStyle}"/>
-                                <ToggleSwitch Header="Enable Waveform Capture"
+                                <ToggleSwitch Header="Enable Waveform"
                                               IsOn="{Binding WaveformEnabled, Mode=TwoWay}"/>
                                 <Button Content="Request Waveform" 
                                         Command="{Binding RequestWaveformCommand}"
                                         Style="{StaticResource AccentButtonStyle}"
                                         HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="Waveform Data" Style="{StaticResource SubheaderStyle}"/>
+                                <TextBlock Text="{Binding DeviceData.Waveform.Samples, Converter={StaticResource WaveformToStringConverter}, Mode=OneWay}"
+                                           FontFamily="Consolas"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -495,29 +553,36 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Log Panel (Fixed at bottom) -->
-        <Border Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+        <!-- Log Panel -->
+        <Border Grid.Row="2" 
+                Style="{StaticResource DataCardStyle}" 
+                Margin="24,16,24,24">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <!-- Log Header with Clear Button -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Padding="12,8">
-                    <TextBlock Text="System Log" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <Button Content="Clear Logs" 
-                            Command="{Binding ClearLogsCommand}" 
-                            Margin="12,0,0,0"
-                            Padding="8,4"
-                            HorizontalAlignment="Right"
-                            Style="{StaticResource SecondaryButtonStyle}"/>
-                </StackPanel>
-                <!-- Log Content -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" 
+                           Text="Log" 
+                           Style="{StaticResource SectionHeaderStyle}"/>
+                <Button Grid.Row="0" Grid.Column="1"
+                        Content="Clear Logs" 
+                        Command="{Binding ClearLogsCommand}"
+                        Style="{StaticResource SecondaryButtonStyle}"/>
+
+                <ScrollViewer x:Name="LogScrollViewer"
+                              Grid.Row="1" Grid.ColumnSpan="2" 
+                              VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled">
                     <TextBlock Text="{Binding LogText, Mode=OneWay}" 
                                FontFamily="Consolas" 
-                               FontSize="11"
-                               TextWrapping="Wrap"
+                               FontSize="11" 
+                               TextWrapping="Wrap" 
                                Padding="12"/>
                 </ScrollViewer>
             </Grid>

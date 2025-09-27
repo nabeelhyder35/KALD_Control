@@ -16,7 +16,6 @@
             <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <conv:FrequencyConverter x:Key="FrequencyConverter"/>
-            <conv:InterlockStatusToBrushConverter x:Key="InterlockStatusToBrushConverter"/>
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
             <conv:LaserStateToColorConverter x:Key="LaserStateToColorConverter"/>
             <conv:LaserStateToStringConverter x:Key="LaserStateToStringConverter"/>

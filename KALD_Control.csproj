@@ -55,13 +55,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="..\..\Downloads\WinSerialCommander\17.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="CSharpMarkup.WinUI" Version="3.1.2" />
 		<PackageReference Include="CSharpMarkup.WinUI.LiveChartsCore.SkiaSharpView" Version="3.1.2" />
@@ -89,6 +82,5 @@
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageId>KALD_Control</PackageId>
 		<Title>KALD_Control</Title>
-		<PackageIcon>17.png</PackageIcon>
 	</PropertyGroup>
 </Project>
